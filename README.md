@@ -48,7 +48,7 @@ VITE_EMAILJS_SERVICE_ID=service_xxxxxxx
 VITE_EMAILJS_GUEST_TEMPLATE_ID=template_xxxxxxx
 VITE_EMAILJS_HOST_TEMPLATE_ID=template_xxxxxxx
 VITE_EMAILJS_PUBLIC_KEY=xxxxxxxxxxxxxxxx
-VITE_HOST_EMAIL=ariel.magsino@hivve.tech
+VITE_HOST_EMAIL=
 # Optional — used to build the "View or update your RSVP" link in the guest email.
 # Falls back to window.location.origin if unset (works fine for most setups).
 VITE_SITE_URL=https://giannas-birthday.example.com
