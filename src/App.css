@@ -242,16 +242,52 @@
 }
 
 /* ---------- Venue card ---------- */
+/* Matches the .hero treatment — frosted white gradient + soft corner glows. */
 .venue-card {
   margin-top: 22px;
   display: flex;
   align-items: center;
   gap: 22px;
-  padding: 24px 26px;
-  background: linear-gradient(135deg, rgba(255, 179, 217, 0.18), rgba(200, 168, 255, 0.18));
-  border: 1px solid rgba(160, 124, 255, 0.25);
-  border-radius: 22px;
-  box-shadow: var(--shadow-card);
+  padding: 28px 30px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.35) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 32px;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+  position: relative;
+  overflow: hidden;
+}
+
+.venue-card::before,
+.venue-card::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.venue-card::before {
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, var(--pink-300), transparent 70%);
+  top: -60px;
+  left: -40px;
+}
+
+.venue-card::after {
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, var(--purple-300), transparent 70%);
+  bottom: -80px;
+  right: -60px;
+}
+
+.venue-card__icon,
+.venue-card__body {
+  position: relative;
+  z-index: 1;
 }
 
 .venue-card__icon {
