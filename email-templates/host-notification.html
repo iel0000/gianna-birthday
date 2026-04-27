@@ -1,0 +1,124 @@
+<!--
+  HOST NOTIFICATION TEMPLATE
+  Paste this HTML into the EmailJS template "Content" tab (HTML mode).
+
+  In EmailJS template settings, set:
+    To Email     : {{to_email}}        (defaults to ariel.magsino@hivve.tech)
+    To Name      : {{to_name}}
+    From Name    : Gianna's RSVP Inbox
+    Subject      : New RSVP — {{guest_name}} ({{attending_raw}}, {{seats}} seats)
+    Reply To     : {{guest_email}}     (so you can reply directly to the guest)
+
+  Variables expected (already sent by the app):
+    to_name, guest_name, guest_email, attending, attending_raw, seats,
+    message, submitted_at, celebrant_name, event_title
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>New RSVP</title>
+</head>
+<body style="margin:0;padding:0;background:#fdf2f8;font-family:'Helvetica Neue',Arial,sans-serif;color:#3d2a73;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#fff3f9 0%,#f3e8ff 50%,#fde4f1 100%);padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:24px;box-shadow:0 18px 60px rgba(217,73,148,0.18);overflow:hidden;">
+
+          <!-- Header band -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#a07cff 0%,#ff7eb6 100%);padding:28px 32px;text-align:center;color:#ffffff;">
+              <div style="font-size:12px;letter-spacing:4px;text-transform:uppercase;opacity:0.9;">RSVP Inbox</div>
+              <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;margin-top:6px;">New response for Gianna's celebration</div>
+            </td>
+          </tr>
+
+          <!-- Headline -->
+          <tr>
+            <td style="padding:32px 36px 8px 36px;">
+              <p style="margin:0 0 6px 0;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:#6f4ed1;">Guest</p>
+              <h1 style="margin:0 0 6px 0;font-family:Georgia,'Times New Roman',serif;font-size:28px;color:#3d2a73;">{{guest_name}}</h1>
+              <p style="margin:0;color:#5a4a78;">
+                <a href="mailto:{{guest_email}}" style="color:#d94994;text-decoration:none;">{{guest_email}}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Status pills -->
+          <tr>
+            <td style="padding:18px 36px 0 36px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-right:10px;">
+                    <span style="display:inline-block;padding:8px 16px;border-radius:999px;background:linear-gradient(135deg,#ff7eb6,#a07cff);color:#fff;font-weight:600;font-size:14px;">
+                      {{attending}}
+                    </span>
+                  </td>
+                  <td>
+                    <span style="display:inline-block;padding:8px 16px;border-radius:999px;background:#fff3f9;border:1px solid #ffe1f0;color:#d94994;font-weight:600;font-size:14px;">
+                      {{seats}} seat(s)
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Detail card -->
+          <tr>
+            <td style="padding:24px 36px 8px 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#fff3f9,#f3e8ff);border:1px solid #efe1ff;border-radius:18px;">
+                <tr>
+                  <td style="padding:22px 24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;width:38%;">Attending</td>
+                        <td style="padding:6px 0;color:#3d2a73;font-weight:600;">{{attending}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Seats</td>
+                        <td style="padding:6px 0;color:#3d2a73;font-weight:600;font-size:18px;">{{seats}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Message</td>
+                        <td style="padding:6px 0;color:#3d2a73;font-style:italic;">{{message}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Submitted</td>
+                        <td style="padding:6px 0;color:#3d2a73;">{{submitted_at}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Guest email</td>
+                        <td style="padding:6px 0;color:#3d2a73;">
+                          <a href="mailto:{{guest_email}}" style="color:#d94994;text-decoration:none;">{{guest_email}}</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Reply prompt -->
+          <tr>
+            <td style="padding:24px 36px 0 36px;">
+              <p style="margin:0;line-height:1.6;color:#5a4a78;">
+                Reply directly to this email to respond to <strong>{{guest_name}}</strong>. Their address is set as the reply-to.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#faf5ff;padding:20px 32px;text-align:center;font-size:12px;color:#8a7aaa;margin-top:24px;">
+              Auto-sent by the {{celebrant_name}} {{event_title}} site.
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
