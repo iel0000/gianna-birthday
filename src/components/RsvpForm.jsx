@@ -17,6 +17,7 @@ export default function RsvpForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(null); // the locked RSVP after submit
   const [emailNote, setEmailNote] = useState('');
+  const [dbNote, setDbNote] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -62,10 +63,11 @@ export default function RsvpForm() {
       setEmailNote(`RSVP saved. Email note: ${emailResult.reason}`);
     }
 
-    // Soft-log db result to the console — guests don't need to see this,
-    // but if writes are silently failing the host needs to know.
-    if (!dbResult.ok) {
+    if (dbResult.ok) {
+      setDbNote('Saved to the guest list ✓');
+    } else {
       console.warn('[RSVP db] not persisted to Supabase:', dbResult.reason);
+      setDbNote(`Database note: ${dbResult.reason}`);
     }
 
     setSubmitting(false);
@@ -120,6 +122,7 @@ export default function RsvpForm() {
           </p>
 
           {emailNote && <p className="rsvp__note">{emailNote}</p>}
+          {dbNote && <p className="rsvp__note">{dbNote}</p>}
         </div>
       </section>
     );
