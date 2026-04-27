@@ -68,13 +68,6 @@ const RSVP_COLUMNS = [
   { label: 'Submitted At', get: (r) => r.submitted_at }
 ];
 
-const GODPARENT_COLUMNS = [
-  { label: 'Name', get: (g) => g.name },
-  { label: 'Email', get: (g) => g.email },
-  { label: 'Message', get: (g) => g.message ?? '' },
-  { label: 'Responded At', get: (g) => g.responded_at }
-];
-
 const fmtDate = (iso) => {
   if (!iso) return '—';
   try {
@@ -150,7 +143,9 @@ export default function GuestList() {
       attending: yes.length,
       seats: yes.reduce((sum, r) => sum + (r.seats || 0), 0),
       kids: yes.reduce((sum, r) => sum + (r.bringing_kids ? r.kids_count || 0 : 0), 0),
-      godparents: data.godparents.length,
+      // Pulled directly from rsvps.is_godparent — the source of truth now
+      // that the godparent answer is captured during the RSVP itself.
+      godparents: data.rsvps.filter((r) => r.is_godparent).length,
       declined: data.rsvps.length - yes.length
     };
   }, [data]);
@@ -158,14 +153,6 @@ export default function GuestList() {
   const exportRsvps = () => {
     const stamp = new Date().toISOString().slice(0, 10);
     downloadCsv(`avery-rsvps-${stamp}.csv`, toCsv(data.rsvps, RSVP_COLUMNS));
-  };
-
-  const exportGodparents = () => {
-    const stamp = new Date().toISOString().slice(0, 10);
-    downloadCsv(
-      `avery-godparents-${stamp}.csv`,
-      toCsv(data.godparents, GODPARENT_COLUMNS)
-    );
   };
 
   const goHome = () => {
@@ -312,48 +299,6 @@ export default function GuestList() {
               )}
             </section>
 
-            <section className="card guests__section">
-              <div className="guests__section-head">
-                <h2 className="card__title">Godparents &nbsp;<span className="guests__count">{data.godparents.length}</span></h2>
-                <button
-                  type="button"
-                  className="btn btn--primary guests__export"
-                  onClick={exportGodparents}
-                  disabled={data.godparents.length === 0}
-                >
-                  ⬇︎ &nbsp; Export godparents to CSV
-                </button>
-              </div>
-
-              {data.godparents.length === 0 ? (
-                <p className="guests__empty">No godparent responses yet.</p>
-              ) : (
-                <div className="guests__table-wrap">
-                  <table className="guests__table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Message</th>
-                        <th>Responded</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.godparents.map((g) => (
-                        <tr key={g.email}>
-                          <td>{g.name}</td>
-                          <td>
-                            <a href={`mailto:${g.email}`}>{g.email}</a>
-                          </td>
-                          <td className="guests__msg">{g.message || '—'}</td>
-                          <td className="guests__when">{fmtDate(g.responded_at)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
           </>
         )}
       </main>
