@@ -91,6 +91,12 @@ export default function GuestList() {
   const [loading, setLoading] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const refresh = () => setRefreshTick((t) => t + 1);
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    godparent: false,
+    kids: false
+  });
 
   useEffect(() => {
     document.title = "Guest list — Avery's celebration";
@@ -136,6 +142,30 @@ export default function GuestList() {
     };
   }, [session, refreshTick]);
 
+  const filteredRsvps = useMemo(() => {
+    const q = filters.search.trim().toLowerCase();
+    return data.rsvps.filter((r) => {
+      if (q) {
+        const haystack = `${r.name || ''} ${r.email || ''}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      if (filters.status === 'attending' && !r.attending) return false;
+      if (filters.status === 'declined' && r.attending) return false;
+      if (filters.godparent && !r.is_godparent) return false;
+      if (filters.kids && !r.bringing_kids) return false;
+      return true;
+    });
+  }, [data.rsvps, filters]);
+
+  const filtersActive =
+    filters.search ||
+    filters.status !== 'all' ||
+    filters.godparent ||
+    filters.kids;
+
+  const clearFilters = () =>
+    setFilters({ search: '', status: 'all', godparent: false, kids: false });
+
   const totals = useMemo(() => {
     const yes = data.rsvps.filter((r) => r.attending);
     return {
@@ -152,7 +182,7 @@ export default function GuestList() {
 
   const exportRsvps = () => {
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadCsv(`avery-rsvps-${stamp}.csv`, toCsv(data.rsvps, RSVP_COLUMNS));
+    downloadCsv(`avery-rsvps-${stamp}.csv`, toCsv(filteredRsvps, RSVP_COLUMNS));
   };
 
   const goHome = () => {
@@ -242,19 +272,93 @@ export default function GuestList() {
 
             <section className="card guests__section">
               <div className="guests__section-head">
-                <h2 className="card__title">RSVPs &nbsp;<span className="guests__count">{data.rsvps.length}</span></h2>
+                <h2 className="card__title">
+                  RSVPs &nbsp;
+                  <span className="guests__count">
+                    {filtersActive
+                      ? `${filteredRsvps.length} of ${data.rsvps.length}`
+                      : data.rsvps.length}
+                  </span>
+                </h2>
                 <button
                   type="button"
                   className="btn btn--primary guests__export"
                   onClick={exportRsvps}
-                  disabled={data.rsvps.length === 0}
+                  disabled={filteredRsvps.length === 0}
                 >
                   ⬇︎ &nbsp; Export RSVPs to CSV
                 </button>
               </div>
 
+              <div className="guests__filters">
+                <input
+                  type="search"
+                  className="guests__search"
+                  placeholder="Search name or email…"
+                  value={filters.search}
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, search: e.target.value }))
+                  }
+                />
+                <div className="guests__filter-pills" role="group" aria-label="Status">
+                  {[
+                    { value: 'all', label: 'All' },
+                    { value: 'attending', label: 'Attending' },
+                    { value: 'declined', label: 'Declined' }
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`pill ${filters.status === opt.value ? 'pill--on' : ''}`}
+                      onClick={() =>
+                        setFilters((f) => ({ ...f, status: opt.value }))
+                      }
+                      aria-pressed={filters.status === opt.value}
+                    >
+                      <span>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="guests__filter-pills" role="group" aria-label="Tags">
+                  <button
+                    type="button"
+                    className={`pill ${filters.godparent ? 'pill--on' : ''}`}
+                    onClick={() =>
+                      setFilters((f) => ({ ...f, godparent: !f.godparent }))
+                    }
+                    aria-pressed={filters.godparent}
+                  >
+                    <span>💜 Godparents</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill ${filters.kids ? 'pill--on' : ''}`}
+                    onClick={() => setFilters((f) => ({ ...f, kids: !f.kids }))}
+                    aria-pressed={filters.kids}
+                  >
+                    <span>🌸 Bringing kids</span>
+                  </button>
+                </div>
+                {filtersActive && (
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={clearFilters}
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+
               {data.rsvps.length === 0 ? (
                 <p className="guests__empty">No RSVPs yet.</p>
+              ) : filteredRsvps.length === 0 ? (
+                <p className="guests__empty">
+                  No RSVPs match the current filters.{' '}
+                  <button type="button" className="link-button" onClick={clearFilters}>
+                    Clear filters
+                  </button>
+                </p>
               ) : (
                 <div className="guests__table-wrap">
                   <table className="guests__table">
@@ -271,7 +375,7 @@ export default function GuestList() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.rsvps.map((r) => (
+                      {filteredRsvps.map((r) => (
                         <tr key={r.email} className={r.attending ? '' : 'guests__row--declined'}>
                           <td>{r.name}</td>
                           <td>
