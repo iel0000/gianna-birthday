@@ -45,6 +45,29 @@ VITE_SUPABASE_ANON_KEY=<the long anon key>
 
 5. For the deployed site, add the same two values as repository secrets at *Settings → Secrets and variables → Actions*. Re-run the GitHub Actions workflow so the new secrets are baked into the build.
 
+### Bulk-importing the guest list
+
+The admin invitations section has an **⬆︎ Import CSV** button that takes a simple spreadsheet of guests and bulk-creates an invitation row for each. A *sample format* link next to it downloads a template, and there's a working copy at [`samples/invitations-template.csv`](samples/invitations-template.csv).
+
+Expected columns (case-insensitive, order doesn't matter):
+
+| Header | Required | Notes |
+| --- | --- | --- |
+| `Name` (or `Guest Name`) | yes | Display name shown to the guest on their invitation |
+| `Seats` | no | 1–12. Defaults to 1 if missing or invalid |
+| `Godparent` (or `Type`) | no | `Yes`/`Y`/`true`/`1`/`💜` marks as godparent — anything else is a regular guest |
+
+Example:
+
+```csv
+Name,Seats,Godparent
+The Cruz Family,4,No
+Tito Rico Reyes,3,Yes
+"Santos Family, Manila",5,No
+```
+
+Fields with commas should be wrapped in double quotes (Excel does this automatically). After import, the banner above the table reports how many rows landed and how many were skipped (rows missing a name are skipped silently).
+
 ### Reading the guest list
 
 The site has a built-in admin guest list at <https://yoursite.com/#guests> (or `/#admin`) showing all RSVPs and godparents with stat tiles, tables, and CSV export. **It's gated by Supabase Auth** — anyone hitting the URL has to sign in with an admin account before seeing any data.

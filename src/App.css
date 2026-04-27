@@ -1237,6 +1237,11 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.guests__sample-link {
+  font-size: 0.78rem;
 }
 
 .banner--ok {

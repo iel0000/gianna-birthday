@@ -589,6 +589,18 @@ function InvitationManager({ invitations, onChanged }) {
 
   const onImportClick = () => fileInputRef.current?.click();
 
+  const downloadSample = () => {
+    const sample =
+      'Name,Seats,Godparent\n' +
+      'The Cruz Family,4,No\n' +
+      'Maria Garcia,2,No\n' +
+      'Tito Rico Reyes,3,Yes\n' +
+      '"Santos Family, Manila",5,No\n' +
+      'Tita Lourdes Mendoza,1,Yes\n' +
+      'Ate Joy & kids,4,No\n';
+    downloadCsv('avery-invitations-template.csv', sample);
+  };
+
   const onFileChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-importing the same file
@@ -705,6 +717,14 @@ function InvitationManager({ invitations, onChanged }) {
             title="Upload a CSV with columns: Name, Seats, Godparent"
           >
             ⬆︎ &nbsp; {importing ? 'Importing…' : 'Import CSV'}
+          </button>
+          <button
+            type="button"
+            className="link-button guests__sample-link"
+            onClick={downloadSample}
+            title="Download a sample CSV with the expected columns"
+          >
+            sample format
           </button>
           <button
             type="button"
