@@ -8,7 +8,7 @@ const photos = [
   { src: `${B}photos/gianna-1.jpg`, alt: 'Gianna smiling', caption: 'Our little fairy' },
   { src: `${B}photos/gianna-2.jpg`, alt: 'Gianna playing', caption: 'A year of giggles' },
   { src: `${B}photos/gianna-3.jpg`, alt: 'Gianna with family', caption: 'Loved beyond measure' },
-  { src: `${B}photos/gianna-4.jpg`, alt: 'Gianna dressed up', caption: 'Sparkle &amp; mischief' }
+  { src: `${B}photos/gianna-4.jpg`, alt: 'Gianna dressed up', caption: 'Sparkle & mischief' }
 ];
 
 export default function Gallery() {
