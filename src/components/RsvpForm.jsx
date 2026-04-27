@@ -14,23 +14,15 @@ export default function RsvpForm() {
   const { user, logout } = useAuth();
   const [form, setForm] = useState(initialState);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState(null);
+  const [submitted, setSubmitted] = useState(null); // the locked RSVP after submit
   const [emailNote, setEmailNote] = useState('');
 
   useEffect(() => {
     if (!user) return;
     const existing = getRsvpFor(user.email);
     if (existing) {
-      setForm({
-        attending: existing.attending ? 'yes' : 'no',
-        seats: user.reservedSeats || existing.seats,
-        message: existing.message || ''
-      });
-      setResult({
-        attending: existing.attending,
-        seats: user.reservedSeats || existing.seats,
-        savedBefore: true
-      });
+      // Already RSVP'd — never show the form again.
+      setSubmitted(existing);
     } else if (user.reservedSeats) {
       setForm((prev) => ({ ...prev, seats: user.reservedSeats }));
     }
@@ -55,7 +47,7 @@ export default function RsvpForm() {
     };
 
     const saved = saveRsvp(user.email, rsvp);
-    setResult({ attending: saved.attending, seats: saved.seats });
+    setSubmitted(saved);
 
     const emailResult = await sendRsvpEmails({ user, rsvp: saved });
     if (emailResult.sent) {
@@ -66,6 +58,60 @@ export default function RsvpForm() {
 
     setSubmitting(false);
   };
+
+  // Once submitted, render a locked summary — no form, no resubmit path.
+  if (submitted) {
+    return (
+      <section className="rsvp card" aria-label="Your RSVP">
+        <div className="rsvp__header">
+          <div>
+            <p className="card__eyebrow">Welcome back, {user.name}</p>
+            <h2 className="card__title">
+              {submitted.attending ? 'Your seat is saved 💜' : 'We will miss you 🌸'}
+            </h2>
+          </div>
+          <button type="button" className="btn btn--ghost" onClick={logout}>Sign out</button>
+        </div>
+
+        <div className="rsvp__locked" role="status">
+          <div className="rsvp__burst" aria-hidden="true">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <span key={i} className="rsvp__burst-dot" style={{ '--i': i }} />
+            ))}
+          </div>
+
+          {submitted.attending ? (
+            <>
+              <div className="reserved-seats reserved-seats--locked">
+                <div className="reserved-seats__count">{submitted.seats}</div>
+                <div className="reserved-seats__label">
+                  {submitted.seats === 1 ? 'seat' : 'seats'} reserved under <strong>{user.name}</strong>
+                </div>
+              </div>
+
+              {submitted.message && (
+                <div className="rsvp__locked-message">
+                  <p className="rsvp__locked-label">Your message for Avery</p>
+                  <p className="rsvp__locked-quote">&ldquo;{submitted.message}&rdquo;</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="rsvp__locked-text">
+              Thank you for letting us know. Your blessings are still with Avery.
+            </p>
+          )}
+
+          <p className="rsvp__locked-footer">
+            Your RSVP has been recorded. If something needs to change, please reply to your
+            confirmation email and we will update it on your behalf.
+          </p>
+
+          {emailNote && <p className="rsvp__note">{emailNote}</p>}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="rsvp card" aria-label="RSVP form">
@@ -104,7 +150,7 @@ export default function RsvpForm() {
               {user.reservedSeats === 1 ? 'seat' : 'seats'} reserved for you
             </div>
             <p className="reserved-seats__note">
-              We have set aside this number of seats just for {user.name.split(' ')[0]}'s party. If something needs to change, just reply to your confirmation email.
+              We have set aside this number of seats just for {user.name.split(' ')[0]}'s party. Please confirm — RSVPs cannot be edited online once submitted.
             </p>
           </div>
         )}
@@ -115,26 +161,9 @@ export default function RsvpForm() {
         </label>
 
         <button type="submit" className="btn btn--primary" disabled={submitting}>
-          {submitting ? 'Sending fairy mail…' : (result?.savedBefore ? 'Update my RSVP' : 'Send my RSVP')}
+          {submitting ? 'Sending fairy mail…' : 'Send my RSVP'}
         </button>
       </form>
-
-      {result && (
-        <div className="rsvp__result" role="status">
-          <div className="rsvp__burst" aria-hidden="true">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <span key={i} className="rsvp__burst-dot" style={{ '--i': i }} />
-            ))}
-          </div>
-          <h3>{result.attending ? 'Your seat is saved 💜' : 'We will miss you 🌸'}</h3>
-          {result.attending ? (
-            <p>{result.seats} {result.seats === 1 ? 'seat' : 'seats'} reserved under <strong>{user.name}</strong>.</p>
-          ) : (
-            <p>Thank you for letting us know. Your blessings are still with Avery.</p>
-          )}
-          {emailNote && <p className="rsvp__note">{emailNote}</p>}
-        </div>
-      )}
     </section>
   );
 }
