@@ -20,6 +20,9 @@ export async function persistRsvpToSupabase({ user, rsvp }) {
     attending: rsvp.attending,
     seats: rsvp.seats,
     reserved_seats: user.reservedSeats ?? null,
+    bringing_kids: !!rsvp.bringingKids,
+    kids_count: rsvp.bringingKids ? Math.max(0, Number(rsvp.kidsCount) || 0) : 0,
+    is_godparent: !!rsvp.isGodparent,
     message: rsvp.message || null,
     submitted_at: rsvp.submittedAt
   };
@@ -50,7 +53,7 @@ export async function fetchRsvpFromSupabase(email) {
 
   const { data, error } = await supabase
     .from('rsvps')
-    .select('email, name, attending, seats, message, submitted_at, reserved_seats')
+    .select('email, name, attending, seats, message, submitted_at, reserved_seats, bringing_kids, kids_count, is_godparent')
     .eq('email', cleanEmail)
     .maybeSingle();
 
@@ -65,6 +68,9 @@ export async function fetchRsvpFromSupabase(email) {
     name: data.name,
     attending: data.attending,
     seats: data.seats,
+    bringingKids: !!data.bringing_kids,
+    kidsCount: data.kids_count || 0,
+    isGodparent: !!data.is_godparent,
     message: data.message || '',
     submittedAt: data.submitted_at,
     reservedSeats: data.reserved_seats
@@ -131,7 +137,7 @@ export async function fetchAllRsvps() {
   const [rsvpsRes, godparentsRes] = await Promise.all([
     supabase
       .from('rsvps')
-      .select('email, name, attending, seats, reserved_seats, message, submitted_at')
+      .select('email, name, attending, seats, reserved_seats, bringing_kids, kids_count, is_godparent, message, submitted_at')
       .order('submitted_at', { ascending: false }),
     supabase.from('godparents').select('email, name, message, responded_at')
   ]);
@@ -148,9 +154,12 @@ export async function fetchAllRsvps() {
   const godparentEmails = new Set(
     (godparentsRes.data || []).map((g) => (g.email || '').toLowerCase())
   );
+  // Combine the rsvps.is_godparent flag with the existence of a row in
+  // the godparents table — either signal counts.
   const rsvps = (rsvpsRes.data || []).map((r) => ({
     ...r,
-    is_godparent: godparentEmails.has((r.email || '').toLowerCase())
+    is_godparent:
+      !!r.is_godparent || godparentEmails.has((r.email || '').toLowerCase())
   }));
 
   return {

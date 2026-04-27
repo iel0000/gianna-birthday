@@ -39,6 +39,8 @@ const RSVP_COLUMNS = [
   { label: 'Attending', get: (r) => (r.attending ? 'Yes' : 'No') },
   { label: 'Seats', get: (r) => r.seats },
   { label: 'Reserved Seats', get: (r) => r.reserved_seats ?? '' },
+  { label: 'Bringing Kids', get: (r) => (r.bringing_kids ? 'Yes' : 'No') },
+  { label: 'Kids Count', get: (r) => r.kids_count ?? 0 },
   { label: 'Godparent', get: (r) => (r.is_godparent ? 'Yes' : 'No') },
   { label: 'Message', get: (r) => r.message ?? '' },
   { label: 'Submitted At', get: (r) => r.submitted_at }
@@ -91,6 +93,7 @@ export default function GuestList() {
       responses: data.rsvps.length,
       attending: yes.length,
       seats: yes.reduce((sum, r) => sum + (r.seats || 0), 0),
+      kids: yes.reduce((sum, r) => sum + (r.bringing_kids ? r.kids_count || 0 : 0), 0),
       godparents: data.godparents.length,
       declined: data.rsvps.length - yes.length
     };
@@ -145,6 +148,7 @@ export default function GuestList() {
               <Stat label="Responses" value={totals.responses} />
               <Stat label="Attending" value={totals.attending} accent="pink" />
               <Stat label="Seats" value={totals.seats} accent="purple" />
+              <Stat label="Kids" value={totals.kids} />
               <Stat label="Declined" value={totals.declined} />
               <Stat label="Godparents" value={totals.godparents} accent="gold" />
             </section>
@@ -173,6 +177,7 @@ export default function GuestList() {
                         <th>Email</th>
                         <th>Status</th>
                         <th>Seats</th>
+                        <th>Kids</th>
                         <th>Godparent</th>
                         <th>Message</th>
                         <th>Submitted</th>
@@ -193,6 +198,9 @@ export default function GuestList() {
                             </span>
                           </td>
                           <td className="guests__num">{r.seats}</td>
+                          <td className="guests__num">
+                            {r.bringing_kids ? r.kids_count || 0 : ''}
+                          </td>
                           <td>{r.is_godparent ? '💜' : ''}</td>
                           <td className="guests__msg">{r.message || '—'}</td>
                           <td className="guests__when">{fmtDate(r.submitted_at)}</td>

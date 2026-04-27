@@ -17,11 +17,20 @@ create table if not exists public.rsvps (
   attending       boolean     not null,
   seats           integer     not null default 1 check (seats >= 0 and seats <= 12),
   reserved_seats  integer     check (reserved_seats is null or (reserved_seats >= 1 and reserved_seats <= 12)),
+  bringing_kids   boolean     not null default false,
+  kids_count      integer     not null default 0 check (kids_count >= 0 and kids_count <= 12),
+  is_godparent    boolean     not null default false,
   message         text,
   submitted_at    timestamptz not null default now(),
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+
+-- Add the kids / godparent columns to existing rsvps tables (idempotent).
+alter table public.rsvps
+  add column if not exists bringing_kids boolean not null default false,
+  add column if not exists kids_count integer not null default 0,
+  add column if not exists is_godparent boolean not null default false;
 
 -- Old versions of this schema created a unique index on lower(email).
 -- That index doesn't satisfy `ON CONFLICT (email)`, so the upsert from

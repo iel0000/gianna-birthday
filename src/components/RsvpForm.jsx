@@ -3,29 +3,39 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { getRsvpFor, saveRsvp } from '../utils/storage.js';
 import { sendRsvpEmails } from '../utils/emailService.js';
 import { isEmailConfigured } from '../utils/emailConfig.js';
-import { persistRsvpToSupabase, fetchRsvpFromSupabase } from '../utils/rsvpDb.js';
+import {
+  persistRsvpToSupabase,
+  fetchRsvpFromSupabase,
+  recordGodparent
+} from '../utils/rsvpDb.js';
 
 const initialState = {
   attending: 'yes',
   seats: 1,
+  bringingKids: false,
+  kidsCount: 1,
   message: ''
 };
 
-export default function RsvpForm() {
+// `mode` controls the wording + side effects:
+//   "guest"     — standard RSVP (default)
+//   "godparent" — same RSVP fields, but also marks the row as a godparent
+//                 and inserts into the godparents table.
+export default function RsvpForm({ mode = 'guest' }) {
+  const isGodparent = mode === 'godparent';
   const { user, logout } = useAuth();
   const [form, setForm] = useState(initialState);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(null); // the locked RSVP after submit
+  const [submitted, setSubmitted] = useState(null);
   const [emailNote, setEmailNote] = useState('');
   const [dbNote, setDbNote] = useState('');
-  const [checking, setChecking] = useState(true);   // looking up Supabase on mount
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
 
     async function loadExistingRsvp() {
-      // Local cache first — instant render if this device has already submitted.
       const local = getRsvpFor(user.email);
       if (local) {
         if (!cancelled) {
@@ -35,15 +45,15 @@ export default function RsvpForm() {
         return;
       }
 
-      // Otherwise, ask Supabase — handles the cross-device case where the
-      // guest RSVP'd on phone and is now opening the email link on laptop.
       const remote = await fetchRsvpFromSupabase(user.email);
       if (cancelled) return;
       if (remote) {
-        // Cache locally so subsequent visits are instant and offline-safe.
         saveRsvp(user.email, {
           attending: remote.attending,
           seats: remote.seats,
+          bringingKids: remote.bringingKids,
+          kidsCount: remote.kidsCount,
+          isGodparent: remote.isGodparent,
           message: remote.message
         });
         setSubmitted(remote);
@@ -79,39 +89,64 @@ export default function RsvpForm() {
     setSubmitting(true);
     setEmailNote('');
 
+    const attending = form.attending === 'yes';
     const rsvp = {
-      attending: form.attending === 'yes',
-      seats: form.attending === 'yes' ? Math.max(1, Number(form.seats) || 1) : 0,
+      attending,
+      seats: attending ? Math.max(1, Number(form.seats) || 1) : 0,
+      bringingKids: attending && form.bringingKids,
+      kidsCount:
+        attending && form.bringingKids
+          ? Math.max(1, Number(form.kidsCount) || 1)
+          : 0,
+      isGodparent,
       message: form.message.trim()
     };
 
     const saved = saveRsvp(user.email, rsvp);
     setSubmitted(saved);
 
-    // Mirror to Supabase in parallel with the email — both are best-effort.
-    // The local save above is the source of truth for the UX lock.
-    const [emailResult, dbResult] = await Promise.all([
+    const tasks = [
       sendRsvpEmails({ user, rsvp: saved }),
       persistRsvpToSupabase({ user, rsvp: saved })
-    ]);
+    ];
+    if (isGodparent) {
+      tasks.push(
+        recordGodparent({
+          name: user.name,
+          email: user.email,
+          message: saved.message
+        })
+      );
+    }
+
+    const [emailResult, dbResult, godparentResult] = await Promise.all(tasks);
+
     if (emailResult.sent) {
       setEmailNote('A confirmation has fluttered into your inbox. ✨');
     } else {
       setEmailNote(`RSVP saved. Email note: ${emailResult.reason}`);
     }
 
-    if (dbResult.ok) {
-      setDbNote('Saved to the guest list ✓');
+    if (dbResult.ok && (!isGodparent || godparentResult?.ok)) {
+      setDbNote(
+        isGodparent
+          ? 'Saved to the guest list and the fairy godparents ring ✨'
+          : 'Saved to the guest list ✓'
+      );
     } else {
-      console.warn('[RSVP db] not persisted to Supabase:', dbResult.reason);
-      setDbNote(`Database note: ${dbResult.reason}`);
+      const reason = !dbResult.ok
+        ? dbResult.reason
+        : godparentResult?.reason || 'unknown error';
+      console.warn('[RSVP db] persist failed:', reason);
+      setDbNote(`Database note: ${reason}`);
     }
 
     setSubmitting(false);
   };
 
-  // Once submitted, render a locked summary — no form, no resubmit path.
+  // ─── Locked summary (after submission or returning visit) ───
   if (submitted) {
+    const showGodparent = !!submitted.isGodparent || isGodparent;
     return (
       <section className="rsvp card" aria-label="Your RSVP">
         <div className="rsvp__header">
@@ -140,6 +175,18 @@ export default function RsvpForm() {
                 </div>
               </div>
 
+              {submitted.bringingKids && submitted.kidsCount > 0 && (
+                <p className="rsvp__locked-text">
+                  Bringing {submitted.kidsCount} {submitted.kidsCount === 1 ? 'little one' : 'little ones'} 🌸
+                </p>
+              )}
+
+              {showGodparent && (
+                <p className="rsvp__locked-text">
+                  Lovingly listed as one of Avery's godparents 💜
+                </p>
+              )}
+
               {submitted.message && (
                 <div className="rsvp__locked-message">
                   <p className="rsvp__locked-label">Your message for Avery</p>
@@ -165,12 +212,15 @@ export default function RsvpForm() {
     );
   }
 
+  // ─── Active form ───
   return (
     <section className="rsvp card" aria-label="RSVP form">
       <div className="rsvp__header">
         <div>
           <p className="card__eyebrow">Welcome, {user.name}</p>
-          <h2 className="card__title">Will you join the fairy ring?</h2>
+          <h2 className="card__title">
+            {isGodparent ? 'RSVP as a godparent 💜' : 'Will you join the fairy ring?'}
+          </h2>
         </div>
         <button type="button" className="btn btn--ghost" onClick={logout}>Sign out</button>
       </div>
@@ -196,24 +246,71 @@ export default function RsvpForm() {
         </fieldset>
 
         {form.attending === 'yes' && (
-          <div className="reserved-seats" role="status">
-            <div className="reserved-seats__count">{user.reservedSeats}</div>
-            <div className="reserved-seats__label">
-              {user.reservedSeats === 1 ? 'seat' : 'seats'} reserved for you
+          <>
+            <div className="reserved-seats" role="status">
+              <div className="reserved-seats__count">{user.reservedSeats}</div>
+              <div className="reserved-seats__label">
+                {user.reservedSeats === 1 ? 'seat' : 'seats'} reserved for you
+              </div>
+              <p className="reserved-seats__note">
+                We have set aside this number of seats just for {user.name.split(' ')[0]}'s party. Please confirm — RSVPs cannot be edited online once submitted.
+              </p>
             </div>
-            <p className="reserved-seats__note">
-              We have set aside this number of seats just for {user.name.split(' ')[0]}'s party. Please confirm — RSVPs cannot be edited online once submitted.
-            </p>
-          </div>
+
+            <div className="form__field">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={form.bringingKids}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, bringingKids: e.target.checked }))
+                  }
+                />
+                <span className="switch__track" aria-hidden="true">
+                  <span className="switch__thumb" />
+                </span>
+                <span className="switch__label">Bringing little ones with you?</span>
+              </label>
+            </div>
+
+            {form.bringingKids && (
+              <label className="form__field">
+                <span>How many little ones?</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={form.kidsCount}
+                  onChange={update('kidsCount')}
+                />
+                <small className="form__hint">
+                  Helps us plan kid-sized seats and treats 🌸
+                </small>
+              </label>
+            )}
+          </>
         )}
 
         <label className="form__field">
-          <span>A message for Avery (optional)</span>
-          <textarea rows="3" value={form.message} onChange={update('message')} placeholder="Send a wish, a blessing, or a sprinkle of fairy dust…" />
+          <span>
+            {isGodparent
+              ? 'A blessing for Avery (optional)'
+              : 'A message for Avery (optional)'}
+          </span>
+          <textarea
+            rows="3"
+            value={form.message}
+            onChange={update('message')}
+            placeholder="Send a wish, a blessing, or a sprinkle of fairy dust…"
+          />
         </label>
 
         <button type="submit" className="btn btn--primary" disabled={submitting}>
-          {submitting ? 'Sending fairy mail…' : 'Send my RSVP'}
+          {submitting
+            ? 'Sending fairy mail…'
+            : isGodparent
+              ? 'Confirm — I will be a godparent ✨'
+              : 'Send my RSVP'}
         </button>
       </form>
     </section>

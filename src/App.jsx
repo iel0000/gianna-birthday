@@ -56,13 +56,6 @@ export default function App() {
             <Login />
           )}
         </div>
-
-        <div className="page__godparent-cta">
-          <p>
-            <span aria-hidden="true">💜</span> Have you been asked to be one of Avery's godparents?{' '}
-            <a href="#godparents">Tell us here →</a>
-          </p>
-        </div>
       </main>
 
       <footer className="page__footer">
