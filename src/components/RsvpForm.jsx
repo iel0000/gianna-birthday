@@ -177,10 +177,11 @@ export default function RsvpForm({ mode = 'guest' }) {
       <section className="rsvp card" aria-label="Your RSVP">
         <div className="rsvp__header">
           <div>
-            <p className="card__eyebrow">Welcome back, {displayName}</p>
-            <h2 className="card__title">
+            <p className="card__eyebrow">Welcome back</p>
+            <h2 className="rsvp__guest-name">{displayName}</h2>
+            <p className="rsvp__guest-question">
               {submitted.attending ? 'Your seat is saved 💜' : 'We will miss you 🌸'}
-            </h2>
+            </p>
           </div>
         </div>
 
@@ -242,10 +243,11 @@ export default function RsvpForm({ mode = 'guest' }) {
     <section className="rsvp card" aria-label="RSVP form">
       <div className="rsvp__header">
         <div>
-          <p className="card__eyebrow">For {displayName}</p>
-          <h2 className="card__title">
+          <p className="card__eyebrow">A heartfelt invitation for</p>
+          <h2 className="rsvp__guest-name">{displayName}</h2>
+          <p className="rsvp__guest-question">
             {isGodparent ? 'RSVP as a godparent 💜' : 'Will you join the fairy ring?'}
-          </h2>
+          </p>
         </div>
       </div>
 

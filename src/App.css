@@ -1303,6 +1303,29 @@
   margin-bottom: 16px;
 }
 
+/* Big, gradient guest name so the recipient sees themselves clearly */
+.rsvp__guest-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  font-size: clamp(1.9rem, 5vw, 2.8rem);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  margin: 4px 0 8px;
+  background: linear-gradient(135deg, #d94994 0%, #a07cff 60%, #6f4ed1 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  word-break: break-word;
+}
+
+.rsvp__guest-question {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: clamp(1rem, 2.4vw, 1.2rem);
+  color: var(--purple-700);
+  margin-bottom: 4px;
+}
+
 .rsvp__result {
   margin-top: 24px;
   padding: 20px;
