@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { getRsvpFor, saveRsvp } from '../utils/storage.js';
 import { sendRsvpEmails } from '../utils/emailService.js';
 import { isEmailConfigured } from '../utils/emailConfig.js';
-import { persistRsvpToSupabase } from '../utils/rsvpDb.js';
+import { persistRsvpToSupabase, fetchRsvpFromSupabase } from '../utils/rsvpDb.js';
 
 const initialState = {
   attending: 'yes',
@@ -18,19 +18,56 @@ export default function RsvpForm() {
   const [submitted, setSubmitted] = useState(null); // the locked RSVP after submit
   const [emailNote, setEmailNote] = useState('');
   const [dbNote, setDbNote] = useState('');
+  const [checking, setChecking] = useState(true);   // looking up Supabase on mount
 
   useEffect(() => {
     if (!user) return;
-    const existing = getRsvpFor(user.email);
-    if (existing) {
-      // Already RSVP'd — never show the form again.
-      setSubmitted(existing);
-    } else if (user.reservedSeats) {
-      setForm((prev) => ({ ...prev, seats: user.reservedSeats }));
+    let cancelled = false;
+
+    async function loadExistingRsvp() {
+      // Local cache first — instant render if this device has already submitted.
+      const local = getRsvpFor(user.email);
+      if (local) {
+        if (!cancelled) {
+          setSubmitted(local);
+          setChecking(false);
+        }
+        return;
+      }
+
+      // Otherwise, ask Supabase — handles the cross-device case where the
+      // guest RSVP'd on phone and is now opening the email link on laptop.
+      const remote = await fetchRsvpFromSupabase(user.email);
+      if (cancelled) return;
+      if (remote) {
+        // Cache locally so subsequent visits are instant and offline-safe.
+        saveRsvp(user.email, {
+          attending: remote.attending,
+          seats: remote.seats,
+          message: remote.message
+        });
+        setSubmitted(remote);
+      } else if (user.reservedSeats) {
+        setForm((prev) => ({ ...prev, seats: user.reservedSeats }));
+      }
+      setChecking(false);
     }
+
+    loadExistingRsvp();
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   if (!user) return null;
+
+  if (checking) {
+    return (
+      <section className="rsvp card card--loading" aria-label="Checking your RSVP">
+        Checking the fairy ring for your RSVP…
+      </section>
+    );
+  }
 
   const update = (field) => (e) => {
     const value = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
