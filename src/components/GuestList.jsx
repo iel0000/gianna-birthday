@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Sparkles from './Sparkles.jsx';
 import BackgroundImages from './BackgroundImages.jsx';
-import { fetchAllRsvps } from '../utils/rsvpDb.js';
+import {
+  fetchAllRsvps,
+  createInvitation,
+  deleteInvitation,
+  fetchAllInvitationsWithStatus
+} from '../utils/rsvpDb.js';
 import {
   adminSignIn,
   adminSignOut,
@@ -9,6 +14,13 @@ import {
   onAdminAuthChange
 } from '../utils/adminAuth.js';
 import { isSupabaseConfigured } from '../utils/supabaseClient.js';
+
+const buildInviteUrl = (guid, isGodparent) => {
+  if (typeof window === 'undefined') return '';
+  const origin = window.location.origin + window.location.pathname;
+  const hash = isGodparent ? '#godparents' : '';
+  return `${origin}?invite=${guid}${hash}`;
+};
 
 // Convert an array of objects into a CSV string. Quotes any value that
 // contains a comma, quote, or newline; escapes embedded quotes.
@@ -79,7 +91,10 @@ export default function GuestList() {
   const [session, setSession] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [data, setData] = useState({ rsvps: [], godparents: [], ok: false, reason: '' });
+  const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const refresh = () => setRefreshTick((t) => t + 1);
 
   useEffect(() => {
     document.title = "Guest list — Avery's celebration";
@@ -104,21 +119,26 @@ export default function GuestList() {
   useEffect(() => {
     if (!session) {
       setData({ rsvps: [], godparents: [], ok: false, reason: '' });
+      setInvitations([]);
       return;
     }
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const result = await fetchAllRsvps();
+      const [rsvpResult, invResult] = await Promise.all([
+        fetchAllRsvps(),
+        fetchAllInvitationsWithStatus()
+      ]);
       if (!cancelled) {
-        setData(result);
+        setData(rsvpResult);
+        setInvitations(invResult.invitations || []);
         setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session, refreshTick]);
 
   const totals = useMemo(() => {
     const yes = data.rsvps.filter((r) => r.attending);
@@ -215,6 +235,7 @@ export default function GuestList() {
         ) : (
           <>
             <section className="guests__stats">
+              <Stat label="Invitations" value={invitations.length} />
               <Stat label="Responses" value={totals.responses} />
               <Stat label="Attending" value={totals.attending} accent="pink" />
               <Stat label="Seats" value={totals.seats} accent="purple" />
@@ -222,6 +243,12 @@ export default function GuestList() {
               <Stat label="Declined" value={totals.declined} />
               <Stat label="Godparents" value={totals.godparents} accent="gold" />
             </section>
+
+            <InvitationManager
+              invitations={invitations}
+              onChanged={refresh}
+            />
+
 
             <section className="card guests__section">
               <div className="guests__section-head">
@@ -337,6 +364,205 @@ function Stat({ label, value, accent }) {
       <div className="guests__stat-value">{value}</div>
       <div className="guests__stat-label">{label}</div>
     </div>
+  );
+}
+
+function InvitationManager({ invitations, onChanged }) {
+  const [name, setName] = useState('');
+  const [seats, setSeats] = useState(1);
+  const [isGodparent, setIsGodparent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [copiedGuid, setCopiedGuid] = useState(null);
+
+  const totalInvitations = invitations.length;
+  const totalInvitationSeats = useMemo(
+    () => invitations.reduce((sum, inv) => sum + (inv.seats || 0), 0),
+    [invitations]
+  );
+
+  const onCreate = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!name.trim()) {
+      setError('Please enter the guest name.');
+      return;
+    }
+    setSubmitting(true);
+    const res = await createInvitation({ name, seats, isGodparent });
+    setSubmitting(false);
+    if (!res.ok) {
+      setError(res.reason);
+      return;
+    }
+    setName('');
+    setSeats(1);
+    setIsGodparent(false);
+    onChanged?.();
+  };
+
+  const onCopy = async (inv) => {
+    const url = buildInviteUrl(inv.guid, inv.is_godparent);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedGuid(inv.guid);
+      setTimeout(() => setCopiedGuid((g) => (g === inv.guid ? null : g)), 1800);
+    } catch {
+      window.prompt('Copy this URL:', url);
+    }
+  };
+
+  const onDelete = async (inv) => {
+    if (!window.confirm(`Delete the invitation for ${inv.name}? This can't be undone.`)) return;
+    const res = await deleteInvitation(inv.guid);
+    if (!res.ok) {
+      window.alert(`Could not delete: ${res.reason}`);
+      return;
+    }
+    onChanged?.();
+  };
+
+  const exportInvitations = () => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const cols = [
+      { label: 'Name', get: (i) => i.name },
+      { label: 'Seats', get: (i) => i.seats },
+      { label: 'Godparent', get: (i) => (i.is_godparent ? 'Yes' : 'No') },
+      { label: 'Status', get: (i) => i.status },
+      { label: 'RSVP Seats', get: (i) => i.rsvp_seats ?? '' },
+      { label: 'Bringing Kids', get: (i) => (i.rsvp_bringing_kids ? 'Yes' : 'No') },
+      { label: 'Kids Count', get: (i) => i.rsvp_kids_count ?? 0 },
+      { label: 'Message', get: (i) => i.rsvp_message || '' },
+      { label: 'Submitted At', get: (i) => i.submitted_at || '' },
+      { label: 'Invite URL', get: (i) => buildInviteUrl(i.guid, i.is_godparent) }
+    ];
+    downloadCsv(`avery-invitations-${stamp}.csv`, toCsv(invitations, cols));
+  };
+
+  return (
+    <section className="card guests__section">
+      <div className="guests__section-head">
+        <h2 className="card__title">
+          Invitations &nbsp;
+          <span className="guests__count">{totalInvitations}</span>
+          {totalInvitationSeats > 0 && (
+            <span className="guests__count">{totalInvitationSeats} seats reserved</span>
+          )}
+        </h2>
+        <button
+          type="button"
+          className="btn btn--primary guests__export"
+          onClick={exportInvitations}
+          disabled={invitations.length === 0}
+        >
+          ⬇︎ &nbsp; Export to CSV
+        </button>
+      </div>
+
+      <form className="form invitation-form" onSubmit={onCreate}>
+        <div className="invitation-form__row">
+          <label className="form__field invitation-form__name">
+            <span>Guest name</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="The Cruz family"
+              required
+            />
+          </label>
+          <label className="form__field invitation-form__seats">
+            <span>Seats</span>
+            <input
+              type="number"
+              min="1"
+              max="12"
+              value={seats}
+              onChange={(e) => setSeats(Number(e.target.value))}
+            />
+          </label>
+        </div>
+
+        <label className="switch invitation-form__godparent">
+          <input
+            type="checkbox"
+            checked={isGodparent}
+            onChange={(e) => setIsGodparent(e.target.checked)}
+          />
+          <span className="switch__track" aria-hidden="true">
+            <span className="switch__thumb" />
+          </span>
+          <span className="switch__label">Mark as godparent invitation</span>
+        </label>
+
+        {error && <div className="form__error" role="alert">{error}</div>}
+
+        <button type="submit" className="btn btn--primary" disabled={submitting}>
+          {submitting ? 'Adding…' : '+ Add invitation'}
+        </button>
+      </form>
+
+      {invitations.length === 0 ? (
+        <p className="guests__empty">No invitations yet. Add one above to generate a link.</p>
+      ) : (
+        <div className="guests__table-wrap">
+          <table className="guests__table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Seats</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th className="guests__actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invitations.map((inv) => (
+                <tr key={inv.guid}>
+                  <td>{inv.name}</td>
+                  <td className="guests__num">{inv.seats}</td>
+                  <td>
+                    {inv.is_godparent ? (
+                      <span className="guests__pill guests__pill--gold">💜 Godparent</span>
+                    ) : (
+                      <span className="guests__pill guests__pill--no">Guest</span>
+                    )}
+                  </td>
+                  <td>
+                    <span className={`guests__pill guests__pill--${inv.status}`}>
+                      {inv.status === 'pending'
+                        ? 'Pending'
+                        : inv.status === 'attending'
+                          ? 'Attending'
+                          : 'Declined'}
+                    </span>
+                  </td>
+                  <td className="guests__when">{fmtDate(inv.submitted_at)}</td>
+                  <td className="guests__actions">
+                    <button
+                      type="button"
+                      className="btn btn--ghost guests__action-btn"
+                      onClick={() => onCopy(inv)}
+                      title={buildInviteUrl(inv.guid, inv.is_godparent)}
+                    >
+                      {copiedGuid === inv.guid ? '✓ Copied' : '📋 Copy URL'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--ghost guests__action-btn guests__action-btn--danger"
+                      onClick={() => onDelete(inv)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

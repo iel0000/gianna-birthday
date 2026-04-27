@@ -7,6 +7,7 @@ import {
   upsertUser
 } from '../utils/storage.js';
 import { isValidEmail } from '../utils/validators.js';
+import { fetchInvitation } from '../utils/rsvpDb.js';
 
 const AuthContext = createContext(null);
 
@@ -22,65 +23,96 @@ export function AuthProvider({ children }) {
   const [pendingReservedSeats, setPendingReservedSeats] = useState(null);
 
   useEffect(() => {
-    let session = getSession();
-    let reservedSeats = null;
+    let cancelled = false;
 
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
+    async function init() {
+      let session = getSession();
+      let reservedSeats = null;
 
-      // Returning guest link: ?rsvp=email — match an existing user and restore session.
-      const rsvpEmail = params.get('rsvp');
-      if (rsvpEmail) {
-        const matchedUser = findUser(rsvpEmail);
-        if (matchedUser) {
-          saveSession(matchedUser);
-          session = matchedUser;
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+
+        // Returning guest link: ?rsvp=email — match an existing user and restore session.
+        const rsvpEmail = params.get('rsvp');
+        if (rsvpEmail) {
+          const matchedUser = findUser(rsvpEmail);
+          if (matchedUser) {
+            saveSession(matchedUser);
+            session = matchedUser;
+          }
+          params.delete('rsvp');
         }
-        params.delete('rsvp');
+
+        // Personalised invitation link: ?invite=<GUID>
+        // The new primary flow — fetch the invitation row from the database
+        // and seed the session with name + reserved seats from there.
+        const inviteGuid = params.get('invite');
+        if (inviteGuid) {
+          const invitation = await fetchInvitation(inviteGuid);
+          if (cancelled) return;
+          if (invitation) {
+            const profile = upsertUser({
+              name: invitation.name,
+              email: session?.email || '',
+              invitation,
+              reservedSeats: invitation.seats,
+              createdAt: session?.createdAt || new Date().toISOString()
+            });
+            saveSession(profile);
+            session = profile;
+          }
+          params.delete('invite');
+        }
+
+        // Legacy ?seats=N path — held for guests who got an old-style link.
+        const seatParam = parseSeats(params.get('seats'));
+        if (seatParam) {
+          if (session) {
+            const updated = upsertUser({ ...session, reservedSeats: seatParam });
+            saveSession(updated);
+            session = updated;
+          } else {
+            reservedSeats = seatParam;
+          }
+          params.delete('seats');
+        }
+
+        const search = params.toString();
+        const newUrl =
+          window.location.pathname + (search ? `?${search}` : '') + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
       }
 
-      // Reserved-seats invitation link: ?seats=N
-      // For a fresh guest, the seat count is held until they enter name + email.
-      // For an already-signed-in guest, override their reservedSeats immediately
-      // so a new link from the host always wins.
-      const seatParam = parseSeats(params.get('seats'));
-      if (seatParam) {
-        if (session) {
-          const updated = upsertUser({ ...session, reservedSeats: seatParam });
-          saveSession(updated);
-          session = updated;
-        } else {
-          reservedSeats = seatParam;
-        }
-        params.delete('seats');
+      if (!cancelled) {
+        setUser(session);
+        setPendingReservedSeats(reservedSeats);
+        setReady(true);
       }
-
-      const search = params.toString();
-      const newUrl =
-        window.location.pathname + (search ? `?${search}` : '') + window.location.hash;
-      window.history.replaceState({}, '', newUrl);
     }
 
-    setUser(session);
-    setPendingReservedSeats(reservedSeats);
-    setReady(true);
+    init();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // Manual login — kept as a fallback for guests without an invitation link.
+  // Invitation-based flow normally bypasses this; the form just submits.
   const login = useCallback(
     ({ name, email }) => {
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanName = name.trim();
+      const cleanEmail = String(email || '').trim().toLowerCase();
+      const cleanName = String(name || '').trim();
 
-      if (!cleanName || !cleanEmail) {
-        throw new Error('Please share your name and email so we can find your invitation.');
+      if (!cleanName) {
+        throw new Error('Please share your name so we can find your invitation.');
       }
-      if (!isValidEmail(cleanEmail)) {
+      if (cleanEmail && !isValidEmail(cleanEmail)) {
         throw new Error('That email looks a bit off — please double-check it.');
       }
 
-      const existing = findUser(cleanEmail);
+      const existing = cleanEmail ? findUser(cleanEmail) : null;
       const profile = upsertUser({
-        name: cleanName || existing?.name || cleanEmail,
+        name: cleanName,
         email: cleanEmail,
         reservedSeats: pendingReservedSeats ?? existing?.reservedSeats ?? 1,
         createdAt: existing?.createdAt || new Date().toISOString()

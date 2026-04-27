@@ -1,71 +1,19 @@
-import { useState } from 'react';
-import { useAuth } from '../context/AuthContext.jsx';
-
+// Shown when a guest visits without a personalised invitation link.
+// The site is invitation-only — the host shares a /?invite=<guid> URL with
+// each guest. There's no manual name/email login any more.
 export default function Login() {
-  const { login, pendingReservedSeats } = useAuth();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const onSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-    setSubmitting(true);
-    try {
-      login({ name, email });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
-    <section className="login card" aria-label="Sign in to RSVP">
-      {pendingReservedSeats && (
-        <div className="login__reserved" role="status">
-          <span className="login__reserved-icon" aria-hidden="true">✨</span>
-          <div>
-            <strong>{pendingReservedSeats} {pendingReservedSeats === 1 ? 'seat' : 'seats'} reserved for you</strong>
-            <p>Enter your name and email below — we will lock these seats to your name.</p>
-          </div>
-        </div>
-      )}
-      <h2 className="card__title">Step into the fairy ring</h2>
-      <p className="card__lede">Sign in with your name and email to send your RSVP.</p>
-
-      <form className="form" onSubmit={onSubmit} noValidate>
-        <label className="form__field">
-          <span>Your name</span>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Tinkerbell of the Glade"
-            required
-            autoComplete="name"
-          />
-        </label>
-
-        <label className="form__field">
-          <span>Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-            autoComplete="email"
-          />
-        </label>
-
-        {error && <div className="form__error" role="alert">{error}</div>}
-
-        <button type="submit" className="btn btn--primary" disabled={submitting}>
-          {submitting ? 'Opening the gate…' : 'Enter the celebration'}
-        </button>
-      </form>
+    <section className="login card" aria-label="Use your invitation link">
+      <p className="card__eyebrow">Welcome 💜</p>
+      <h2 className="card__title">Open your invitation link</h2>
+      <p className="card__lede">
+        This celebration is invitation-only. Please tap the personalised link the family sent you
+        — it will load your name and the seats reserved for your party automatically.
+      </p>
+      <p className="card__lede">
+        If you can't find your link, please reply to the message we sent and we'll resend it
+        right away.
+      </p>
     </section>
   );
 }

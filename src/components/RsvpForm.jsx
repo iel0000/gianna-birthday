@@ -8,8 +8,10 @@ import {
   fetchRsvpFromSupabase,
   recordGodparent
 } from '../utils/rsvpDb.js';
+import { isValidEmail } from '../utils/validators.js';
 
 const initialState = {
+  email: '',
   attending: 'yes',
   seats: 1,
   bringingKids: false,
@@ -36,7 +38,7 @@ export default function RsvpForm({ mode = 'guest' }) {
     let cancelled = false;
 
     async function loadExistingRsvp() {
-      const local = getRsvpFor(user.email);
+      const local = getRsvpFor(user);
       if (local) {
         if (!cancelled) {
           setSubmitted(local);
@@ -45,10 +47,15 @@ export default function RsvpForm({ mode = 'guest' }) {
         return;
       }
 
-      const remote = await fetchRsvpFromSupabase(user.email);
+      // Skip remote lookup if there's no email and no invitation — nothing to look up by.
+      if (!user.email && !user.invitation?.id) {
+        if (!cancelled) setChecking(false);
+        return;
+      }
+      const remote = user.email ? await fetchRsvpFromSupabase(user.email) : null;
       if (cancelled) return;
       if (remote) {
-        saveRsvp(user.email, {
+        saveRsvp(user, {
           attending: remote.attending,
           seats: remote.seats,
           bringingKids: remote.bringingKids,
@@ -86,8 +93,22 @@ export default function RsvpForm({ mode = 'guest' }) {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
     setEmailNote('');
+
+    // Validate email only if one was provided — it's optional now.
+    const typedEmail = (form.email || '').trim();
+    if (typedEmail && !isValidEmail(typedEmail)) {
+      setEmailNote('That email looks a bit off — please double-check it or leave it blank.');
+      return;
+    }
+
+    setSubmitting(true);
+
+    // Promote the typed email onto the user object so storage + db keys
+    // can use it. Falls back to whatever was already in the session.
+    const userForSubmit = typedEmail
+      ? { ...user, email: typedEmail }
+      : user;
 
     const attending = form.attending === 'yes';
     const rsvp = {
@@ -102,18 +123,21 @@ export default function RsvpForm({ mode = 'guest' }) {
       message: form.message.trim()
     };
 
-    const saved = saveRsvp(user.email, rsvp);
+    const saved = saveRsvp(userForSubmit, rsvp);
     setSubmitted(saved);
 
     const tasks = [
-      sendRsvpEmails({ user, rsvp: saved }),
-      persistRsvpToSupabase({ user, rsvp: saved })
+      // Email only fires when the guest provided one.
+      typedEmail || userForSubmit.email
+        ? sendRsvpEmails({ user: userForSubmit, rsvp: saved })
+        : Promise.resolve({ sent: false, reason: 'no email provided' }),
+      persistRsvpToSupabase({ user: userForSubmit, rsvp: saved })
     ];
-    if (isGodparent) {
+    if (isGodparent && userForSubmit.email) {
       tasks.push(
         recordGodparent({
-          name: user.name,
-          email: user.email,
+          name: userForSubmit.invitation?.name || userForSubmit.name,
+          email: userForSubmit.email,
           message: saved.message
         })
       );
@@ -144,6 +168,8 @@ export default function RsvpForm({ mode = 'guest' }) {
     setSubmitting(false);
   };
 
+  const displayName = user.invitation?.name || user.name;
+
   // ─── Locked summary (after submission or returning visit) ───
   if (submitted) {
     const showGodparent = !!submitted.isGodparent || isGodparent;
@@ -151,7 +177,7 @@ export default function RsvpForm({ mode = 'guest' }) {
       <section className="rsvp card" aria-label="Your RSVP">
         <div className="rsvp__header">
           <div>
-            <p className="card__eyebrow">Welcome back, {user.name}</p>
+            <p className="card__eyebrow">Welcome back, {displayName}</p>
             <h2 className="card__title">
               {submitted.attending ? 'Your seat is saved 💜' : 'We will miss you 🌸'}
             </h2>
@@ -171,7 +197,7 @@ export default function RsvpForm({ mode = 'guest' }) {
               <div className="reserved-seats reserved-seats--locked">
                 <div className="reserved-seats__count">{submitted.seats}</div>
                 <div className="reserved-seats__label">
-                  {submitted.seats === 1 ? 'seat' : 'seats'} reserved under <strong>{user.name}</strong>
+                  {submitted.seats === 1 ? 'seat' : 'seats'} reserved under <strong>{displayName}</strong>
                 </div>
               </div>
 
@@ -217,7 +243,7 @@ export default function RsvpForm({ mode = 'guest' }) {
     <section className="rsvp card" aria-label="RSVP form">
       <div className="rsvp__header">
         <div>
-          <p className="card__eyebrow">Welcome, {user.name}</p>
+          <p className="card__eyebrow">For {displayName}</p>
           <h2 className="card__title">
             {isGodparent ? 'RSVP as a godparent 💜' : 'Will you join the fairy ring?'}
           </h2>
@@ -233,6 +259,20 @@ export default function RsvpForm({ mode = 'guest' }) {
       )}
 
       <form className="form" onSubmit={onSubmit}>
+        <label className="form__field">
+          <span>Email (optional)</span>
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+            placeholder="you@example.com"
+            autoComplete="email"
+          />
+          <small className="form__hint">
+            We'll send a confirmation if you add one — totally optional.
+          </small>
+        </label>
+
         <fieldset className="form__field form__field--inline">
           <legend>Are you attending?</legend>
           <label className={`pill ${form.attending === 'yes' ? 'pill--on' : ''}`}>
@@ -253,7 +293,7 @@ export default function RsvpForm({ mode = 'guest' }) {
                 {user.reservedSeats === 1 ? 'seat' : 'seats'} reserved for you
               </div>
               <p className="reserved-seats__note">
-                We have set aside this number of seats just for {user.name.split(' ')[0]}'s party. Please confirm — RSVPs cannot be edited online once submitted.
+                We have set aside this number of seats just for {displayName.split(' ')[0]}'s party. Please confirm — RSVPs cannot be edited online once submitted.
               </p>
             </div>
 

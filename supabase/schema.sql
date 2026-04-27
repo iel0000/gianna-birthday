@@ -128,6 +128,51 @@ alter table public.rsvps disable row level security;
 --   -- (no SELECT policy → guests can't enumerate the guest list)
 
 
+-- ─────────── Invitations table ───────────
+-- Admin-created entries — one per guest party. The GUID is the URL token
+-- the host shares: https://yoursite.com/?invite=<guid>. When the guest
+-- opens the link, the site fetches name/seats/godparent from this table
+-- and pre-fills the form.
+create table if not exists public.invitations (
+  id            bigint generated always as identity primary key,
+  guid          uuid        not null default gen_random_uuid() unique,
+  name          text        not null,
+  seats         integer     not null default 1 check (seats >= 1 and seats <= 12),
+  is_godparent  boolean     not null default false,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+drop trigger if exists invitations_touch_updated_at on public.invitations;
+create trigger invitations_touch_updated_at
+  before update on public.invitations
+  for each row execute function public.touch_updated_at();
+
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.invitations to anon, authenticated;
+alter table public.invitations disable row level security;
+
+-- Link rsvps rows back to the invitation that produced them. Idempotent
+-- migration for existing projects: column added if missing, email made
+-- nullable (it's now optional), and a unique constraint on invitation_id
+-- so the upsert can target it.
+alter table public.rsvps
+  add column if not exists invitation_id bigint references public.invitations(id) on delete set null;
+
+alter table public.rsvps alter column email drop not null;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'rsvps_invitation_id_key'
+      and conrelid = 'public.rsvps'::regclass
+  ) then
+    alter table public.rsvps add constraint rsvps_invitation_id_key unique (invitation_id);
+  end if;
+end $$;
+
+
 -- ─────────── Godparents table ───────────
 -- Powers the standalone /#godparents page. Stores anyone who said YES
 -- to "Will you be one of Avery's godparents?" — those who decline don't

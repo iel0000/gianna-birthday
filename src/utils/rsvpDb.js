@@ -14,24 +14,27 @@ export async function persistRsvpToSupabase({ user, rsvp }) {
     return { ok: false, reason: 'Supabase not configured' };
   }
 
+  const invitationId = user.invitation?.id || null;
   const row = {
-    email: normalizeEmail(user.email),
-    name: user.name,
+    invitation_id: invitationId,
+    email: user.email ? normalizeEmail(user.email) : null,
+    name: user.invitation?.name || user.name,
     attending: rsvp.attending,
     seats: rsvp.seats,
-    reserved_seats: user.reservedSeats ?? null,
+    reserved_seats: user.invitation?.seats ?? user.reservedSeats ?? null,
     bringing_kids: !!rsvp.bringingKids,
     kids_count: rsvp.bringingKids ? Math.max(0, Number(rsvp.kidsCount) || 0) : 0,
-    is_godparent: !!rsvp.isGodparent,
+    is_godparent: !!rsvp.isGodparent || !!user.invitation?.is_godparent,
     message: rsvp.message || null,
     submitted_at: rsvp.submittedAt
   };
 
-  // Upsert on email so a host re-sending an invitation overwrites cleanly.
-  // The schema has a unique index on lower(email).
+  // Prefer the invitation_id as the upsert key — it's the new natural key.
+  // For legacy submissions without an invitation, fall back to email.
+  const onConflict = invitationId ? 'invitation_id' : 'email';
   const { error } = await supabase
     .from('rsvps')
-    .upsert(row, { onConflict: 'email' });
+    .upsert(row, { onConflict });
 
   if (error) {
     console.error('[RSVP db] upsert failed', error);
@@ -39,6 +42,104 @@ export async function persistRsvpToSupabase({ user, rsvp }) {
   }
 
   return { ok: true };
+}
+
+// ──────────── Invitations ────────────
+
+export async function fetchInvitation(guid) {
+  if (!isSupabaseConfigured()) return null;
+  const cleanGuid = String(guid || '').trim().toLowerCase();
+  if (!cleanGuid) return null;
+
+  const { data, error } = await supabase
+    .from('invitations')
+    .select('id, guid, name, seats, is_godparent, created_at')
+    .eq('guid', cleanGuid)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[Invitation db] fetch failed', error);
+    return null;
+  }
+  return data || null;
+}
+
+export async function createInvitation({ name, seats, isGodparent }) {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'Supabase is not configured.' };
+  }
+  const cleanName = String(name || '').trim();
+  const seatNum = Math.max(1, Math.min(12, Math.floor(Number(seats) || 1)));
+  if (!cleanName) {
+    return { ok: false, reason: 'Please enter the guest name.' };
+  }
+
+  const { data, error } = await supabase
+    .from('invitations')
+    .insert({
+      name: cleanName,
+      seats: seatNum,
+      is_godparent: !!isGodparent
+    })
+    .select('id, guid, name, seats, is_godparent, created_at')
+    .single();
+
+  if (error) {
+    console.error('[Invitation db] create failed', error);
+    return { ok: false, reason: error.message };
+  }
+  return { ok: true, invitation: data };
+}
+
+export async function deleteInvitation(guid) {
+  if (!isSupabaseConfigured()) return { ok: false, reason: 'Supabase is not configured.' };
+  const { error } = await supabase.from('invitations').delete().eq('guid', guid);
+  if (error) {
+    console.error('[Invitation db] delete failed', error);
+    return { ok: false, reason: error.message };
+  }
+  return { ok: true };
+}
+
+// Returns admin-created invitations with each one's RSVP status joined in.
+// Status values: 'pending' (no RSVP yet), 'attending', 'declined'.
+export async function fetchAllInvitationsWithStatus() {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'Supabase not configured', invitations: [] };
+  }
+  const [invRes, rsvpRes] = await Promise.all([
+    supabase
+      .from('invitations')
+      .select('id, guid, name, seats, is_godparent, created_at')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('rsvps')
+      .select('invitation_id, attending, seats, bringing_kids, kids_count, message, submitted_at')
+  ]);
+
+  if (invRes.error) {
+    return { ok: false, reason: invRes.error.message, invitations: [] };
+  }
+
+  const rsvpByInviteId = new Map();
+  (rsvpRes.data || []).forEach((r) => {
+    if (r.invitation_id != null) rsvpByInviteId.set(r.invitation_id, r);
+  });
+
+  const invitations = (invRes.data || []).map((inv) => {
+    const rsvp = rsvpByInviteId.get(inv.id);
+    return {
+      ...inv,
+      status: rsvp ? (rsvp.attending ? 'attending' : 'declined') : 'pending',
+      rsvp_seats: rsvp?.seats ?? null,
+      rsvp_bringing_kids: rsvp?.bringing_kids || false,
+      rsvp_kids_count: rsvp?.kids_count || 0,
+      rsvp_message: rsvp?.message || '',
+      submitted_at: rsvp?.submitted_at || null
+    };
+  });
+
+  return { ok: true, invitations };
 }
 
 // Look up an existing RSVP by email so the site can show the locked
