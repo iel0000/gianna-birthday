@@ -82,7 +82,7 @@ The HTML body is only the email *content*. EmailJS needs the recipient/subject c
 |---|---|
 | To Email | `{{to_email}}` |
 | To Name | `{{to_name}}` |
-| Reply To | your own email (e.g. `ariel.magsino@hivve.tech`) |
+| Reply To | your own email |
 | Subject | `Your seat in the fairy ring is saved 🧚‍♀️ — Avery's 1st Birthday & Christening` |
 | From Name | `Avery's Fairy Court` |
 
