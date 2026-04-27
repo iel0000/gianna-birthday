@@ -3,6 +3,7 @@ import Sparkles from './Sparkles.jsx';
 import BackgroundImages from './BackgroundImages.jsx';
 import { recordGodparent } from '../utils/rsvpDb.js';
 import { isSupabaseConfigured } from '../utils/supabaseClient.js';
+import { isValidEmail } from '../utils/validators.js';
 
 const initialState = {
   name: '',
@@ -34,6 +35,10 @@ export default function Godparents() {
 
     if (!form.name.trim() || !form.email.trim()) {
       setError('Please share your name and email so we can record your blessing.');
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      setError('That email looks a bit off — please double-check it.');
       return;
     }
 

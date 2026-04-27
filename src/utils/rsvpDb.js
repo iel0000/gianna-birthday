@@ -111,7 +111,7 @@ export async function fetchGodparents() {
   if (!isSupabaseConfigured()) return [];
   const { data, error } = await supabase
     .from('godparents')
-    .select('name, responded_at')
+    .select('email, name, message, responded_at')
     .order('responded_at', { ascending: true });
 
   if (error) {
@@ -119,4 +119,43 @@ export async function fetchGodparents() {
     return [];
   }
   return data || [];
+}
+
+// Full RSVP list for the host's admin page. Returns the rows in submit
+// order, with a `is_godparent` flag joined from the godparents table.
+export async function fetchAllRsvps() {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'Supabase not configured', rsvps: [], godparents: [] };
+  }
+
+  const [rsvpsRes, godparentsRes] = await Promise.all([
+    supabase
+      .from('rsvps')
+      .select('email, name, attending, seats, reserved_seats, message, submitted_at')
+      .order('submitted_at', { ascending: false }),
+    supabase.from('godparents').select('email, name, message, responded_at')
+  ]);
+
+  if (rsvpsRes.error) {
+    return {
+      ok: false,
+      reason: rsvpsRes.error.message,
+      rsvps: [],
+      godparents: []
+    };
+  }
+
+  const godparentEmails = new Set(
+    (godparentsRes.data || []).map((g) => (g.email || '').toLowerCase())
+  );
+  const rsvps = (rsvpsRes.data || []).map((r) => ({
+    ...r,
+    is_godparent: godparentEmails.has((r.email || '').toLowerCase())
+  }));
+
+  return {
+    ok: true,
+    rsvps,
+    godparents: godparentsRes.data || []
+  };
 }

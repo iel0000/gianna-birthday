@@ -7,6 +7,7 @@ import RsvpForm from './components/RsvpForm.jsx';
 import Sparkles from './components/Sparkles.jsx';
 import BackgroundImages, { BackgroundCredits } from './components/BackgroundImages.jsx';
 import Godparents from './components/Godparents.jsx';
+import GuestList from './components/GuestList.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import './App.css';
 
@@ -31,6 +32,9 @@ export default function App() {
 
   if (hash === '#godparents') {
     return <Godparents />;
+  }
+  if (hash === '#guests' || hash === '#admin') {
+    return <GuestList />;
   }
 
   return (

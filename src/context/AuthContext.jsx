@@ -6,6 +6,7 @@ import {
   saveSession,
   upsertUser
 } from '../utils/storage.js';
+import { isValidEmail } from '../utils/validators.js';
 
 const AuthContext = createContext(null);
 
@@ -72,6 +73,9 @@ export function AuthProvider({ children }) {
 
       if (!cleanName || !cleanEmail) {
         throw new Error('Please share your name and email so we can find your invitation.');
+      }
+      if (!isValidEmail(cleanEmail)) {
+        throw new Error('That email looks a bit off — please double-check it.');
       }
 
       const existing = findUser(cleanEmail);
