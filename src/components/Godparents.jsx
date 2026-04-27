@@ -1,29 +1,21 @@
 import { useEffect, useState } from 'react';
 import Sparkles from './Sparkles.jsx';
 import BackgroundImages from './BackgroundImages.jsx';
+import Login from './Login.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { recordGodparent } from '../utils/rsvpDb.js';
 import { isSupabaseConfigured } from '../utils/supabaseClient.js';
-import { isValidEmail } from '../utils/validators.js';
-
-const initialState = {
-  name: '',
-  email: '',
-  message: ''
-};
 
 export default function Godparents() {
-  const [form, setForm] = useState(initialState);
-  const [answer, setAnswer] = useState(null);   // 'yes' | 'no' | null
+  const { user, ready } = useAuth();
+  const [message, setMessage] = useState('');
+  const [answer, setAnswer] = useState(null); // 'yes' | 'no' | null
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState(null);   // { ok, reason }
-  const [error, setError] = useState('');
+  const [result, setResult] = useState(null); // { ok, reason, declined }
 
   useEffect(() => {
     document.title = "Be Avery's Godparent — RSVP";
   }, []);
-
-  const update = (field) => (e) =>
-    setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
   const goHome = () => {
     window.location.hash = '';
@@ -31,22 +23,13 @@ export default function Godparents() {
 
   const onSubmitYes = async (e) => {
     e.preventDefault();
-    setError('');
-
-    if (!form.name.trim() || !form.email.trim()) {
-      setError('Please share your name and email so we can record your blessing.');
-      return;
-    }
-    if (!isValidEmail(form.email)) {
-      setError('That email looks a bit off — please double-check it.');
-      return;
-    }
+    if (!user) return; // shouldn't happen — guarded above
 
     setSubmitting(true);
     const res = await recordGodparent({
-      name: form.name,
-      email: form.email,
-      message: form.message
+      name: user.name,
+      email: user.email,
+      message
     });
     setResult(res);
     setSubmitting(false);
@@ -56,6 +39,48 @@ export default function Godparents() {
     setAnswer('no');
     setResult({ ok: true, declined: true });
   };
+
+  // ─── Auth gate ───
+  if (!ready) {
+    return (
+      <div className="page">
+        <BackgroundImages />
+        <Sparkles />
+        <main className="page__main">
+          <section className="card card--loading">Sprinkling fairy dust…</section>
+        </main>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="page">
+        <BackgroundImages />
+        <Sparkles />
+        <main className="page__main">
+          <section className="card godparents__intro">
+            <p className="card__eyebrow">A heartfelt question</p>
+            <h2 className="card__title godparents__title">
+              Will you be one of Avery's godparents?
+            </h2>
+            <p className="card__lede">
+              Sign in below with your name and email — the same details you'd use for the RSVP —
+              and we'll continue.
+            </p>
+          </section>
+          <div className="page__rsvp">
+            <Login />
+          </div>
+          <p className="godparents__back">
+            <button type="button" className="link-button" onClick={goHome}>
+              ← back to the invitation
+            </button>
+          </p>
+        </main>
+      </div>
+    );
+  }
 
   // ─── Result screen ───
   if (result?.ok) {
@@ -81,15 +106,17 @@ export default function Godparents() {
             ) : (
               <>
                 <p className="card__eyebrow">It's official ✨</p>
-                <h2 className="card__title">Welcome to the fairy ring, {form.name.split(' ')[0]} 💜</h2>
+                <h2 className="card__title">
+                  Welcome to the fairy ring, {user.name.split(' ')[0]} 💜
+                </h2>
                 <p className="card__lede">
                   Your name has been added as one of Avery's godparents. We will be in touch about
                   the christening details, and our family is so deeply grateful you said yes.
                 </p>
-                {form.message.trim() && (
+                {message.trim() && (
                   <div className="rsvp__locked-message">
                     <p className="rsvp__locked-label">Your message</p>
-                    <p className="rsvp__locked-quote">&ldquo;{form.message.trim()}&rdquo;</p>
+                    <p className="rsvp__locked-quote">&ldquo;{message.trim()}&rdquo;</p>
                   </div>
                 )}
               </>
@@ -103,7 +130,7 @@ export default function Godparents() {
     );
   }
 
-  // ─── Initial question (no answer yet) ───
+  // ─── Initial question ───
   if (!answer) {
     return (
       <div className="page">
@@ -111,7 +138,7 @@ export default function Godparents() {
         <Sparkles />
         <main className="page__main">
           <section className="card godparents__intro">
-            <p className="card__eyebrow">A heartfelt question</p>
+            <p className="card__eyebrow">For {user.name}</p>
             <h2 className="card__title godparents__title">
               Will you be one of Avery's godparents?
             </h2>
@@ -149,18 +176,18 @@ export default function Godparents() {
     );
   }
 
-  // ─── "Yes" form (collect details) ───
+  // ─── "Yes" — optional message, then confirm ───
   return (
     <div className="page">
       <BackgroundImages />
       <Sparkles />
       <main className="page__main">
         <section className="card godparents__form-card">
-          <p className="card__eyebrow">Almost official</p>
-          <h2 className="card__title">A few details, dear godparent ✨</h2>
+          <p className="card__eyebrow">Almost official, {user.name}</p>
+          <h2 className="card__title">A blessing, if you'd like to share one ✨</h2>
           <p className="card__lede">
-            Tell us your name and email so we can keep you in the loop about the christening.
-            Anything you'd like to write to Avery is treasured but optional.
+            Anything you'd like to write to Avery is treasured but completely optional. We'll save
+            your "yes" the moment you confirm.
           </p>
 
           {!isSupabaseConfigured() && (
@@ -169,45 +196,19 @@ export default function Godparents() {
             </div>
           )}
 
-          <form className="form" onSubmit={onSubmitYes} noValidate>
-            <label className="form__field">
-              <span>Your full name</span>
-              <input
-                type="text"
-                value={form.name}
-                onChange={update('name')}
-                autoComplete="name"
-                placeholder="Tinkerbell of the Glade"
-                required
-              />
-            </label>
-
-            <label className="form__field">
-              <span>Email</span>
-              <input
-                type="email"
-                value={form.email}
-                onChange={update('email')}
-                autoComplete="email"
-                placeholder="you@example.com"
-                required
-              />
-            </label>
-
+          <form className="form" onSubmit={onSubmitYes}>
             <label className="form__field">
               <span>A blessing for Avery (optional)</span>
               <textarea
-                rows="3"
-                value={form.message}
-                onChange={update('message')}
+                rows="4"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
                 placeholder="A wish, a prayer, a sprinkle of fairy dust…"
               />
             </label>
 
-            {(error || (result && !result.ok)) && (
-              <div className="form__error" role="alert">
-                {error || result?.reason}
-              </div>
+            {result && !result.ok && (
+              <div className="form__error" role="alert">{result.reason}</div>
             )}
 
             <div className="godparents__choice">
