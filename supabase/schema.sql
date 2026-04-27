@@ -1,7 +1,9 @@
 -- Supabase schema for the Gianna Avery RSVP site.
 --
 -- Run this once in your Supabase project's SQL Editor (Database → SQL Editor → New query).
--- It is idempotent: running it again is a no-op.
+-- It is idempotent: running it again is a no-op, and it migrates older
+-- versions of the schema (a unique index on lower(email)) to the current
+-- shape (a unique constraint on email + a normalize-on-write trigger).
 --
 -- After running, set these env vars (locally and as GitHub Actions secrets):
 --   VITE_SUPABASE_URL       = https://<your-project-ref>.supabase.co
@@ -21,9 +23,44 @@ create table if not exists public.rsvps (
   updated_at      timestamptz not null default now()
 );
 
--- One RSVP per email (case-insensitive). Upsert from the client uses this.
-create unique index if not exists rsvps_email_unique
-  on public.rsvps (lower(email));
+-- Old versions of this schema created a unique index on lower(email).
+-- That index doesn't satisfy `ON CONFLICT (email)`, so the upsert from
+-- the client fails with "no unique or exclusion constraint matching the
+-- ON CONFLICT specification". Drop it before adding the proper constraint.
+drop index if exists public.rsvps_email_unique;
+
+-- Unique constraint on email — enables `upsert(... { onConflict: 'email' })`.
+-- The trigger below lowercases every email before insert/update so the
+-- constraint is effectively case-insensitive without needing CITEXT.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'rsvps_email_key'
+      and conrelid = 'public.rsvps'::regclass
+  ) then
+    alter table public.rsvps add constraint rsvps_email_key unique (email);
+  end if;
+end $$;
+
+-- Normalize email on every write so a client that forgets to lowercase
+-- still gets the right uniqueness behaviour.
+create or replace function public.normalize_rsvp_email()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.email is not null then
+    new.email := lower(btrim(new.email));
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists rsvps_normalize_email on public.rsvps;
+create trigger rsvps_normalize_email
+  before insert or update on public.rsvps
+  for each row execute function public.normalize_rsvp_email();
 
 -- updated_at maintenance
 create or replace function public.touch_updated_at()
@@ -57,7 +94,7 @@ create policy "rsvps_anon_insert"
   to anon
   with check (true);
 
--- Allow anyone to update — combined with the unique-email index, the
+-- Allow anyone to update — combined with the unique-email constraint, the
 -- client's upsert resolves a conflict by updating the existing row.
 -- (If you want stricter behaviour later, replace this with a policy that
 -- only allows updating the matched email via a server-side function.)
