@@ -72,7 +72,47 @@ The app sends these variables to **both** templates:
 | `event_title` | "1st Birthday & Christening" |
 | `rsvp_link` | `https://yoursite/?rsvp=email#rsvp` — guests click this to auto-sign back in and view or update their RSVP |
 
-In the **host template settings**, set `Reply To` to `{{guest_email}}` so you can reply directly to guests.
+### EmailJS template settings (Settings tab, not Content)
+
+The HTML body is only the email *content*. EmailJS needs the recipient/subject configured separately under each template's **Settings** tab. Set them exactly like this:
+
+**Guest confirmation template:**
+
+| Field | Value |
+|---|---|
+| To Email | `{{to_email}}` |
+| To Name | `{{to_name}}` |
+| Reply To | your own email (e.g. `ariel.magsino@hivve.tech`) |
+| Subject | `Your seat in the fairy ring is saved 🧚‍♀️ — Avery's 1st Birthday & Christening` |
+| From Name | `Avery's Fairy Court` |
+
+**Host notification template:**
+
+| Field | Value |
+|---|---|
+| To Email | `{{to_email}}` |
+| To Name | `{{to_name}}` |
+| Reply To | `{{guest_email}}` *(so hitting Reply emails the guest directly)* |
+| Subject | `✨ New RSVP — {{guest_name}} ({{seats}} seats, {{attending_raw}})` |
+| From Name | `Avery's RSVP Inbox` |
+
+### Troubleshooting
+
+**Orange banner: *"Email confirmations are not configured yet"*** — none of the EmailJS env vars are reaching the build.
+- Locally: ensure `.env.local` exists in the project root and you've **restarted** `npm run dev` after editing it (Vite bakes env vars at startup).
+- Deployed: the GitHub Actions workflow needs to re-run after secrets are added. Trigger it via *Actions → Deploy to GitHub Pages → Run workflow*.
+
+**"recipients address is empty" (HTTP 422)** — the EmailJS template's **To Email** field is blank. Open both templates → Settings tab → set To Email = `{{to_email}}`. The HTML body alone isn't enough; EmailJS needs the destination configured too.
+
+**"recipients address is corrupted" (HTTP 422)** — the address contains stray characters (whitespace, newlines, quotes). Most often a GitHub secret pasted with a trailing newline. The app already trims and scrubs the value, but double-check `VITE_HOST_EMAIL` doesn't have invisible characters in *Settings → Secrets and variables → Actions* (delete and re-create the secret if unsure).
+
+**"The Public Key is invalid" (HTTP 400)** — re-copy from EmailJS *Account → General* and update the `VITE_EMAILJS_PUBLIC_KEY` secret.
+
+**"API calls are disabled for non-browser applications" (HTTP 403)** — in EmailJS *Account → Security*, allow-list your deployed domain (or set to `*` while testing).
+
+**Send succeeds but no email arrives** — check **EmailJS → Email Services** for the green "Connected" badge. If you connected Gmail/Outlook via OAuth, the connection occasionally lapses and needs to be re-authorised.
+
+**Need to see the raw error?** Open the deployed site, submit an RSVP, then in browser devtools → Console look for `[RSVP email] send failed` — the EmailJS status code and message print right after.
 
 ## Project layout
 
