@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import Sparkles from './Sparkles.jsx';
 import BackgroundImages from './BackgroundImages.jsx';
@@ -410,6 +411,108 @@ export default function GuestList() {
   );
 }
 
+// Compact row-action icon button that pops out a small menu.
+// Renders the menu through a portal at document.body so it isn't clipped
+// by the table's overflow-x:auto wrapper.
+function RowActions({ items }) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const positionMenu = () => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    // Anchor the right edge of the menu to the right edge of the toggle.
+    const menuWidth = 200;
+    const top = rect.bottom + 6;
+    const left = Math.min(
+      Math.max(8, rect.right - menuWidth),
+      window.innerWidth - menuWidth - 8
+    );
+    setCoords({ top, left });
+  };
+
+  const handleToggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    positionMenu();
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (
+        !buttonRef.current?.contains(e.target) &&
+        !menuRef.current?.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    const onScroll = () => setOpen(false);
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        className="row-actions__toggle"
+        onClick={handleToggle}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="Row actions"
+      >
+        ⋯
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            className="row-actions__menu"
+            style={{ top: coords.top, left: coords.left }}
+          >
+            {items.map((item, i) => (
+              <button
+                key={i}
+                type="button"
+                role="menuitem"
+                className={`row-actions__item ${item.danger ? 'row-actions__item--danger' : ''}`}
+                onClick={() => {
+                  item.onClick();
+                  setOpen(false);
+                }}
+              >
+                {item.icon && (
+                  <span className="row-actions__icon" aria-hidden="true">{item.icon}</span>
+                )}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
 function Stat({ label, value, accent }) {
   return (
     <div className={`guests__stat ${accent ? `guests__stat--${accent}` : ''}`}>
@@ -594,35 +697,31 @@ function InvitationManager({ invitations, onChanged }) {
                   </td>
                   <td className="guests__when">{fmtDate(inv.submitted_at)}</td>
                   <td className="guests__actions">
-                    <button
-                      type="button"
-                      className="btn btn--ghost guests__action-btn"
-                      onClick={() => onCopy(inv)}
-                      title={buildInviteUrl(inv.guid, inv.is_godparent)}
-                    >
-                      {copiedGuid === inv.guid ? '✓ Copied' : '📋 Copy URL'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--ghost guests__action-btn"
-                      onClick={() => setQrInvitation(inv)}
-                    >
-                      📱 QR
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--ghost guests__action-btn"
-                      onClick={() => setEditingInvitation(inv)}
-                    >
-                      ✏️ Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--ghost guests__action-btn guests__action-btn--danger"
-                      onClick={() => onDelete(inv)}
-                    >
-                      Delete
-                    </button>
+                    <RowActions
+                      items={[
+                        {
+                          icon: copiedGuid === inv.guid ? '✓' : '📋',
+                          label: copiedGuid === inv.guid ? 'Copied!' : 'Copy URL',
+                          onClick: () => onCopy(inv)
+                        },
+                        {
+                          icon: '📱',
+                          label: 'QR code',
+                          onClick: () => setQrInvitation(inv)
+                        },
+                        {
+                          icon: '✏️',
+                          label: 'Edit',
+                          onClick: () => setEditingInvitation(inv)
+                        },
+                        {
+                          icon: '🗑️',
+                          label: 'Delete',
+                          onClick: () => onDelete(inv),
+                          danger: true
+                        }
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
