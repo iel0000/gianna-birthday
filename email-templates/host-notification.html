@@ -5,58 +5,73 @@
   In EmailJS template settings, set:
     To Email     : {{to_email}}        (defaults to ariel.magsino@hivve.tech)
     To Name      : {{to_name}}
-    From Name    : Gianna's RSVP Inbox
-    Subject      : New RSVP — {{guest_name}} ({{attending_raw}}, {{seats}} seats)
+    From Name    : Avery's RSVP Inbox
+    Subject      : ✨ New RSVP — {{guest_name}} ({{seats}} seats, {{attending_raw}})
     Reply To     : {{guest_email}}     (so you can reply directly to the guest)
 
   Variables expected (already sent by the app):
     to_name, guest_name, guest_email, attending, attending_raw, seats,
     message, submitted_at, celebrant_name, event_title
+
+  Email-client notes:
+    • Tables for layout (Outlook desktop)
+    • Inline styles only (Gmail strips <style>)
+    • Linear-gradient falls back to solid color in Outlook — both are set
 -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>New RSVP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>New RSVP for Avery's celebration</title>
 </head>
-<body style="margin:0;padding:0;background:#fdf2f8;font-family:'Helvetica Neue',Arial,sans-serif;color:#3d2a73;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#fff3f9 0%,#f3e8ff 50%,#fde4f1 100%);padding:40px 16px;">
+<body style="margin:0;padding:0;background-color:#fdf2f8;font-family:'Helvetica Neue',Arial,sans-serif;color:#3d2a73;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fdf2f8;background:linear-gradient(135deg,#fff3f9 0%,#f3e8ff 50%,#fde4f1 100%);padding:40px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:24px;box-shadow:0 18px 60px rgba(217,73,148,0.18);overflow:hidden;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:28px;box-shadow:0 18px 60px rgba(217,73,148,0.18);overflow:hidden;">
 
-          <!-- Header band -->
+          <!-- ─────────── Header ─────────── -->
           <tr>
-            <td style="background:linear-gradient(135deg,#a07cff 0%,#ff7eb6 100%);padding:28px 32px;text-align:center;color:#ffffff;">
-              <div style="font-size:12px;letter-spacing:4px;text-transform:uppercase;opacity:0.9;">RSVP Inbox</div>
-              <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;margin-top:6px;">New response for Gianna's celebration</div>
+            <td style="background-color:#a07cff;background:linear-gradient(135deg,#a07cff 0%,#c8a8ff 50%,#ff7eb6 100%);padding:36px 32px 40px 32px;text-align:center;color:#ffffff;">
+              <div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;opacity:0.85;margin-bottom:10px;">RSVP Inbox</div>
+              <div style="font-size:38px;line-height:1;margin-bottom:8px;">✨ 🧚‍♀️ ✨</div>
+              <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.2;font-style:italic;">A new fairy joins the ring</div>
+              <div style="font-size:13px;letter-spacing:2px;opacity:0.92;margin-top:8px;">Avery's 1st Birthday &amp; Christening</div>
             </td>
           </tr>
 
-          <!-- Headline -->
+          <!-- Curved transition under the header -->
           <tr>
-            <td style="padding:32px 36px 8px 36px;">
-              <p style="margin:0 0 6px 0;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:#6f4ed1;">Guest</p>
-              <h1 style="margin:0 0 6px 0;font-family:Georgia,'Times New Roman',serif;font-size:28px;color:#3d2a73;">{{guest_name}}</h1>
-              <p style="margin:0;color:#5a4a78;">
+            <td style="background:#ffffff;padding:0;">
+              <div style="height:24px;background:#ffffff;border-top-left-radius:30px;border-top-right-radius:30px;margin-top:-24px;"></div>
+            </td>
+          </tr>
+
+          <!-- ─────────── Guest hero ─────────── -->
+          <tr>
+            <td style="padding:0 40px 8px 40px;text-align:center;">
+              <p style="margin:0 0 6px 0;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#6f4ed1;">Guest</p>
+              <h1 style="margin:0 0 6px 0;font-family:Georgia,'Times New Roman',serif;font-size:32px;color:#3d2a73;font-weight:normal;">{{guest_name}}</h1>
+              <p style="margin:0;font-size:14px;">
                 <a href="mailto:{{guest_email}}" style="color:#d94994;text-decoration:none;">{{guest_email}}</a>
               </p>
             </td>
           </tr>
 
-          <!-- Status pills -->
+          <!-- ─────────── Status pills ─────────── -->
           <tr>
-            <td style="padding:18px 36px 0 36px;">
-              <table role="presentation" cellpadding="0" cellspacing="0">
+            <td style="padding:24px 40px 8px 40px;text-align:center;">
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
                 <tr>
-                  <td style="padding-right:10px;">
-                    <span style="display:inline-block;padding:8px 16px;border-radius:999px;background:linear-gradient(135deg,#ff7eb6,#a07cff);color:#fff;font-weight:600;font-size:14px;">
+                  <td style="padding:0 6px;">
+                    <span style="display:inline-block;padding:9px 20px;border-radius:999px;background-color:#d94994;background:linear-gradient(135deg,#ff7eb6,#a07cff);color:#ffffff;font-weight:600;font-size:13px;letter-spacing:0.5px;">
                       {{attending}}
                     </span>
                   </td>
-                  <td>
-                    <span style="display:inline-block;padding:8px 16px;border-radius:999px;background:#fff3f9;border:1px solid #ffe1f0;color:#d94994;font-weight:600;font-size:14px;">
-                      {{seats}} seat(s)
+                  <td style="padding:0 6px;">
+                    <span style="display:inline-block;padding:9px 20px;border-radius:999px;background-color:#fff3f9;border:1.5px solid #ffb3d9;color:#d94994;font-weight:600;font-size:13px;letter-spacing:0.5px;">
+                      🎟️ &nbsp; {{seats}} seat(s)
                     </span>
                   </td>
                 </tr>
@@ -64,55 +79,77 @@
             </td>
           </tr>
 
-          <!-- Detail card -->
+          <!-- ─────────── Sparkle divider ─────────── -->
           <tr>
-            <td style="padding:24px 36px 8px 36px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#fff3f9,#f3e8ff);border:1px solid #efe1ff;border-radius:18px;">
+            <td style="padding:28px 40px 18px 40px;text-align:center;color:#c8a8ff;font-size:14px;letter-spacing:8px;">
+              ✦ &nbsp; ✧ &nbsp; ✦
+            </td>
+          </tr>
+
+          <!-- ─────────── Big seat count ─────────── -->
+          <tr>
+            <td style="padding:0 40px 18px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fff3f9;background:linear-gradient(135deg,#fff3f9 0%,#f3e8ff 100%);border-radius:22px;">
                 <tr>
-                  <td style="padding:22px 24px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;width:38%;">Attending</td>
-                        <td style="padding:6px 0;color:#3d2a73;font-weight:600;">{{attending}}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Seats</td>
-                        <td style="padding:6px 0;color:#3d2a73;font-weight:600;font-size:18px;">{{seats}}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Message</td>
-                        <td style="padding:6px 0;color:#3d2a73;font-style:italic;">{{message}}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Submitted</td>
-                        <td style="padding:6px 0;color:#3d2a73;">{{submitted_at}}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Guest email</td>
-                        <td style="padding:6px 0;color:#3d2a73;">
-                          <a href="mailto:{{guest_email}}" style="color:#d94994;text-decoration:none;">{{guest_email}}</a>
-                        </td>
-                      </tr>
-                    </table>
+                  <td style="padding:22px 24px;text-align:center;">
+                    <div style="font-family:Georgia,'Times New Roman',serif;font-size:56px;line-height:1;color:#d94994;font-weight:bold;">{{seats}}</div>
+                    <div style="font-family:Georgia,'Times New Roman',serif;font-size:15px;font-style:italic;color:#3d2a73;margin-top:4px;">seat(s) reserved</div>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- Reply prompt -->
+          <!-- ─────────── Detail table ─────────── -->
           <tr>
-            <td style="padding:24px 36px 0 36px;">
-              <p style="margin:0;line-height:1.6;color:#5a4a78;">
-                Reply directly to this email to respond to <strong>{{guest_name}}</strong>. Their address is set as the reply-to.
+            <td style="padding:6px 40px 0 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;width:38%;vertical-align:top;">Attending</td>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-weight:600;font-size:14px;">{{attending}}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Message</td>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-style:italic;font-size:14px;line-height:1.5;">{{message}}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Submitted</td>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-size:14px;">{{submitted_at}}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Guest email</td>
+                  <td style="padding:12px 0;font-size:14px;">
+                    <a href="mailto:{{guest_email}}" style="color:#d94994;text-decoration:none;">{{guest_email}}</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ─────────── Reply CTA ─────────── -->
+          <tr>
+            <td style="padding:28px 40px 8px 40px;text-align:center;">
+              <a href="mailto:{{guest_email}}?subject=Re%3A%20Avery%27s%20celebration"
+                 style="display:inline-block;background-color:#d94994;background:linear-gradient(135deg,#ff7eb6,#a07cff);color:#ffffff;text-decoration:none;padding:13px 28px;border-radius:999px;font-weight:600;font-size:14px;letter-spacing:1px;box-shadow:0 12px 28px rgba(217,73,148,0.3);">
+                💬 &nbsp; Reply to {{guest_name}}
+              </a>
+              <p style="margin:14px 0 0 0;font-size:12px;color:#8a7aaa;line-height:1.5;">
+                Hitting <em>Reply</em> on this email goes straight to {{guest_name}} — their address is set as the reply-to.
               </p>
             </td>
           </tr>
 
-          <!-- Footer -->
+          <!-- ─────────── Sparkle divider ─────────── -->
           <tr>
-            <td style="background:#faf5ff;padding:20px 32px;text-align:center;font-size:12px;color:#8a7aaa;margin-top:24px;">
-              Auto-sent by the {{celebrant_name}} {{event_title}} site.
+            <td style="padding:24px 40px 12px 40px;text-align:center;color:#ffb3d9;font-size:14px;letter-spacing:8px;">
+              ✦ &nbsp; ✧ &nbsp; ✦
+            </td>
+          </tr>
+
+          <!-- ─────────── Footer ─────────── -->
+          <tr>
+            <td style="background-color:#faf5ff;background:linear-gradient(180deg,#faf5ff,#f3e8ff);padding:20px 32px;text-align:center;font-size:12px;color:#8a7aaa;line-height:1.5;">
+              Auto-sent from the {{celebrant_name}} {{event_title}} site 🧚‍♀️
             </td>
           </tr>
 
