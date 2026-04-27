@@ -690,6 +690,103 @@
   max-width: 380px;
 }
 
+/* ---------- Godparents page ---------- */
+.godparents__intro,
+.godparents__form-card,
+.godparents__result {
+  width: 100%;
+  max-width: 620px;
+  margin: 60px auto;
+  text-align: center;
+  position: relative;
+}
+
+.godparents__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.6rem, 3.4vw, 2.2rem);
+  margin-bottom: 14px;
+  line-height: 1.2;
+}
+
+.godparents__choice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 28px;
+  align-items: stretch;
+}
+
+.godparents__choice .btn {
+  width: 100%;
+  font-size: 1rem;
+  padding: 15px 24px;
+}
+
+.godparents__yes {
+  letter-spacing: 0.05em;
+}
+
+.godparents__no {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.godparents__back {
+  margin-top: 24px;
+  font-size: 0.88rem;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--purple-700);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline dotted;
+  text-underline-offset: 4px;
+}
+
+.link-button:hover {
+  color: var(--pink-700);
+}
+
+.godparents__form-card .form__error {
+  text-align: left;
+}
+
+.godparents__result {
+  padding-top: 48px;
+}
+
+/* ---------- "Be a godparent" CTA on landing page ---------- */
+.page__godparent-cta {
+  text-align: center;
+  margin-top: 12px;
+}
+
+.page__godparent-cta p {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(160, 124, 255, 0.25);
+  padding: 14px 22px;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  color: var(--purple-700);
+  box-shadow: var(--shadow-soft);
+}
+
+.page__godparent-cta a {
+  color: var(--pink-700);
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.page__godparent-cta a:hover {
+  text-decoration: underline;
+}
+
 /* ---------- RSVP locked summary (after submission) ---------- */
 .rsvp__locked {
   position: relative;

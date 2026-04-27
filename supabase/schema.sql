@@ -117,3 +117,47 @@ alter table public.rsvps disable row level security;
 --   create policy "rsvps_insert" on public.rsvps for insert to public with check (true);
 --   create policy "rsvps_update" on public.rsvps for update to public using (true) with check (true);
 --   -- (no SELECT policy → guests can't enumerate the guest list)
+
+
+-- ─────────── Godparents table ───────────
+-- Powers the standalone /#godparents page. Stores anyone who said YES
+-- to "Will you be one of Avery's godparents?" — those who decline don't
+-- get a row. Email is the natural key (one godparent answer per person).
+create table if not exists public.godparents (
+  id            bigint generated always as identity primary key,
+  email         text        not null,
+  name          text        not null,
+  message       text,
+  responded_at  timestamptz not null default now(),
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+-- Unique on email so the godparent page upserts cleanly.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'godparents_email_key'
+      and conrelid = 'public.godparents'::regclass
+  ) then
+    alter table public.godparents add constraint godparents_email_key unique (email);
+  end if;
+end $$;
+
+-- Reuse the normalize/touch triggers defined above.
+drop trigger if exists godparents_normalize_email on public.godparents;
+create trigger godparents_normalize_email
+  before insert or update on public.godparents
+  for each row execute function public.normalize_rsvp_email();
+
+drop trigger if exists godparents_touch_updated_at on public.godparents;
+create trigger godparents_touch_updated_at
+  before update on public.godparents
+  for each row execute function public.touch_updated_at();
+
+-- Grants — anon needs select (to fetch the list for the landing page),
+-- insert, and update (for upsert).
+grant select, insert, update on public.godparents to anon, authenticated;
+
+alter table public.godparents disable row level security;

@@ -70,3 +70,53 @@ export async function fetchRsvpFromSupabase(email) {
     reservedSeats: data.reserved_seats
   };
 }
+
+// Save a "yes, I'll be a godparent" response. Upserts on email so a guest
+// can revisit and update their message without creating a duplicate.
+export async function recordGodparent({ name, email, message }) {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'Supabase not configured' };
+  }
+
+  const cleanEmail = normalizeEmail(email);
+  const cleanName = String(name || '').trim();
+  if (!cleanEmail || !cleanName) {
+    return { ok: false, reason: 'Name and email are both required.' };
+  }
+
+  const { error } = await supabase
+    .from('godparents')
+    .upsert(
+      {
+        email: cleanEmail,
+        name: cleanName,
+        message: message ? String(message).trim() : null,
+        responded_at: new Date().toISOString()
+      },
+      { onConflict: 'email' }
+    );
+
+  if (error) {
+    console.error('[Godparent db] upsert failed', error);
+    return { ok: false, reason: error.message };
+  }
+
+  return { ok: true };
+}
+
+// List everyone who said yes — used by the landing page to display the
+// godparent names. Returns [] if Supabase isn't configured or the call
+// fails (graceful degrade — landing page just hides the section).
+export async function fetchGodparents() {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await supabase
+    .from('godparents')
+    .select('name, responded_at')
+    .order('responded_at', { ascending: true });
+
+  if (error) {
+    console.warn('[Godparent db] fetch failed', error);
+    return [];
+  }
+  return data || [];
+}
