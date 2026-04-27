@@ -78,6 +78,15 @@ create trigger rsvps_touch_updated_at
   before update on public.rsvps
   for each row execute function public.touch_updated_at();
 
+-- ─────────── Table privileges ───────────
+-- RLS sits ON TOP of base privileges — even a permissive policy with
+-- `with check (true)` fails if the role doesn't have INSERT/UPDATE on
+-- the table itself. Default Supabase setups grant these automatically,
+-- but some projects (or older ones) don't, which surfaces as
+-- "new row violates row-level security policy" on every write.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update on public.rsvps to anon, authenticated;
+
 -- ─────────── Row Level Security ───────────
 -- The site uses the anon key in the browser. RLS keeps the data private:
 -- guests can submit/upsert their own row but cannot read anyone's RSVPs.
