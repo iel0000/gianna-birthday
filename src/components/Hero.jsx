@@ -5,7 +5,7 @@ export default function Hero() {
     <header className="hero">
       <div className="hero__portrait">
         <PhotoFrame
-          src="/photos/gianna-hero.jpg"
+          src={`${import.meta.env.BASE_URL}photos/gianna-hero.jpg`}
           alt="Gianna Avery Magsino"
           shape="circle"
           size="lg"

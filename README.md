@@ -127,3 +127,42 @@ npm run preview    # serves dist/ locally for a smoke test
 ```
 
 The output in `dist/` is a static site — drop it on any static host (Netlify, Vercel, GitHub Pages, S3 + CloudFront, etc.).
+
+## Deploy to GitHub Pages
+
+This repo is wired for GitHub Pages via GitHub Actions. The build runs on every push to `main` and publishes the `dist/` output to Pages.
+
+### One-time setup
+
+1. **Create a repository on GitHub** (e.g. `giannas-birthday`) and push this folder as the repo root:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git branch -M main
+   git remote add origin https://github.com/<your-user>/<your-repo>.git
+   git push -u origin main
+   ```
+2. **Enable GitHub Pages**: in the repo, go to **Settings → Pages** and set **Source** to **GitHub Actions**.
+3. **(Optional) Add EmailJS secrets**: in **Settings → Secrets and variables → Actions**, add:
+   - `VITE_EMAILJS_SERVICE_ID`
+   - `VITE_EMAILJS_GUEST_TEMPLATE_ID`
+   - `VITE_EMAILJS_HOST_TEMPLATE_ID`
+   - `VITE_EMAILJS_PUBLIC_KEY`
+   - `VITE_HOST_EMAIL`
+
+   Without these, the site still works (RSVPs save locally) but no email fires.
+
+That's it. Push to `main` and the [Deploy to GitHub Pages](.github/workflows/deploy.yml) workflow takes care of the rest. The published URL appears in the workflow run summary and at **Settings → Pages**.
+
+### What the workflow does
+
+- Installs deps with `npm ci`.
+- Reads the Pages-assigned base path (e.g. `/your-repo`) and passes it to Vite as `VITE_BASE_PATH` so all asset URLs resolve correctly.
+- Sets `VITE_SITE_URL` to the live origin + base path so the "View or update your RSVP" link in confirmation emails points at the deployed site.
+- Builds, copies `index.html` to `404.html` (so direct hits on any path still load the SPA), and uploads `dist/` as the Pages artifact.
+- The `deploy` job publishes the artifact and prints the live URL.
+
+### Custom domain
+
+Add a `CNAME` file in `public/` containing your domain (e.g. `giannas-birthday.com`). Set the DNS records per [GitHub's docs](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site), then in **Settings → Pages**, enter the custom domain. The workflow will detect the empty base path and asset URLs adjust automatically.

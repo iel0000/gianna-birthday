@@ -3,11 +3,12 @@ import useReveal from '../utils/useReveal.js';
 
 // Drop image files into public/photos/ with these names to replace placeholders.
 // Filenames marked with `?` are optional — placeholders will show until the file exists.
+const B = import.meta.env.BASE_URL;
 const photos = [
-  { src: '/photos/gianna-1.jpg', alt: 'Gianna smiling', caption: 'Our little fairy' },
-  { src: '/photos/gianna-2.jpg', alt: 'Gianna playing', caption: 'A year of giggles' },
-  { src: '/photos/gianna-3.jpg', alt: 'Gianna with family', caption: 'Loved beyond measure' },
-  { src: '/photos/gianna-4.jpg', alt: 'Gianna dressed up', caption: 'Sparkle &amp; mischief' }
+  { src: `${B}photos/gianna-1.jpg`, alt: 'Gianna smiling', caption: 'Our little fairy' },
+  { src: `${B}photos/gianna-2.jpg`, alt: 'Gianna playing', caption: 'A year of giggles' },
+  { src: `${B}photos/gianna-3.jpg`, alt: 'Gianna with family', caption: 'Loved beyond measure' },
+  { src: `${B}photos/gianna-4.jpg`, alt: 'Gianna dressed up', caption: 'Sparkle &amp; mischief' }
 ];
 
 export default function Gallery() {

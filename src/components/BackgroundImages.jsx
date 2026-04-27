@@ -1,14 +1,14 @@
 // Cartoon fairy clipart positioned around the viewport. Vite serves anything
-// in /public at the root, so /fairyN.png works without an import.
+// in /public at the root, so the file paths resolve via BASE_URL.
 //
 // To regenerate the transparent PNGs from new source images:
 //   python scripts/remove-bg.py public/fairy1.jpg public/fairy1.png
-//
-// (or batch-process a folder with the same script)
+
+const B = import.meta.env.BASE_URL;
 
 const fairies = [
   {
-    src: '/fairy1.png', // hand on hip, wand-like pose
+    src: `${B}fairy1.png`, // hand on hip, wand-like pose
     style: {
       top: '6%',
       left: '3%',
@@ -18,7 +18,7 @@ const fairies = [
     }
   },
   {
-    src: '/fairy3.png', // arms-down standing fairy
+    src: `${B}fairy3.png`, // arms-down standing fairy
     style: {
       top: '10%',
       right: '3%',
@@ -28,7 +28,7 @@ const fairies = [
     }
   },
   {
-    src: '/fairy4.png', // side profile, flying
+    src: `${B}fairy4.png`, // side profile, flying
     style: {
       bottom: '24%',
       left: '4%',
@@ -38,7 +38,7 @@ const fairies = [
     }
   },
   {
-    src: '/fairy2.png', // hand to hip, looking right
+    src: `${B}fairy2.png`, // hand to hip, looking right
     style: {
       bottom: '12%',
       right: '4%',
@@ -48,7 +48,7 @@ const fairies = [
     }
   },
   {
-    src: '/fairy1.png',
+    src: `${B}fairy1.png`,
     style: {
       top: '46%',
       left: '50%',
