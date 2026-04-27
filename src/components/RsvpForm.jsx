@@ -25,7 +25,7 @@ const initialState = {
 //                 and inserts into the godparents table.
 export default function RsvpForm({ mode = 'guest' }) {
   const isGodparent = mode === 'godparent';
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [form, setForm] = useState(initialState);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(null);
@@ -182,7 +182,6 @@ export default function RsvpForm({ mode = 'guest' }) {
               {submitted.attending ? 'Your seat is saved 💜' : 'We will miss you 🌸'}
             </h2>
           </div>
-          <button type="button" className="btn btn--ghost" onClick={logout}>Sign out</button>
         </div>
 
         <div className="rsvp__locked" role="status">
@@ -248,7 +247,6 @@ export default function RsvpForm({ mode = 'guest' }) {
             {isGodparent ? 'RSVP as a godparent 💜' : 'Will you join the fairy ring?'}
           </h2>
         </div>
-        <button type="button" className="btn btn--ghost" onClick={logout}>Sign out</button>
       </div>
 
       {!isEmailConfigured() && (

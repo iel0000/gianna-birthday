@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import QRCode from 'qrcode';
 import Sparkles from './Sparkles.jsx';
 import BackgroundImages from './BackgroundImages.jsx';
 import {
@@ -15,11 +16,12 @@ import {
 } from '../utils/adminAuth.js';
 import { isSupabaseConfigured } from '../utils/supabaseClient.js';
 
-const buildInviteUrl = (guid, isGodparent) => {
+// Universal invitation URL — godparent vs regular is determined entirely
+// by the invitation row in the database, not the URL. Same shape for everyone.
+const buildInviteUrl = (guid) => {
   if (typeof window === 'undefined') return '';
   const origin = window.location.origin + window.location.pathname;
-  const hash = isGodparent ? '#godparents' : '';
-  return `${origin}?invite=${guid}${hash}`;
+  return `${origin}?invite=${guid}`;
 };
 
 // Convert an array of objects into a CSV string. Quotes any value that
@@ -374,6 +376,7 @@ function InvitationManager({ invitations, onChanged }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [copiedGuid, setCopiedGuid] = useState(null);
+  const [qrInvitation, setQrInvitation] = useState(null);
 
   const totalInvitations = invitations.length;
   const totalInvitationSeats = useMemo(
@@ -550,6 +553,13 @@ function InvitationManager({ invitations, onChanged }) {
                     </button>
                     <button
                       type="button"
+                      className="btn btn--ghost guests__action-btn"
+                      onClick={() => setQrInvitation(inv)}
+                    >
+                      📱 QR
+                    </button>
+                    <button
+                      type="button"
                       className="btn btn--ghost guests__action-btn guests__action-btn--danger"
                       onClick={() => onDelete(inv)}
                     >
@@ -562,7 +572,113 @@ function InvitationManager({ invitations, onChanged }) {
           </table>
         </div>
       )}
+
+      {qrInvitation && (
+        <QrModal
+          invitation={qrInvitation}
+          onClose={() => setQrInvitation(null)}
+        />
+      )}
     </section>
+  );
+}
+
+function QrModal({ invitation, onClose }) {
+  const [dataUrl, setDataUrl] = useState('');
+  const url = buildInviteUrl(invitation.guid, invitation.is_godparent);
+
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL(url, {
+      width: 480,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+      color: {
+        dark: '#3d2a73', // --purple-900
+        light: '#ffffff'
+      }
+    })
+      .then((d) => {
+        if (!cancelled) setDataUrl(d);
+      })
+      .catch((err) => {
+        console.error('[QR] generation failed', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const download = () => {
+    if (!dataUrl) return;
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    const safeName = invitation.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    a.download = `invitation-${safeName || invitation.guid.slice(0, 8)}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  return (
+    <div
+      className="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`QR code for ${invitation.name}`}
+      onClick={onClose}
+    >
+      <div className="modal__inner" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="modal__close"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+        <p className="card__eyebrow">Invitation QR</p>
+        <h3 className="modal__title">For {invitation.name}</h3>
+        <p className="modal__sub">
+          {invitation.seats} {invitation.seats === 1 ? 'seat' : 'seats'} reserved
+          {invitation.is_godparent ? ' · Godparent' : ''}
+        </p>
+
+        <div className="modal__qr">
+          {dataUrl ? (
+            <img src={dataUrl} alt={`QR code linking to ${url}`} />
+          ) : (
+            <p className="modal__loading">Drawing fairy dust…</p>
+          )}
+        </div>
+
+        <p className="modal__url" title={url}>{url}</p>
+
+        <div className="modal__actions">
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={download}
+            disabled={!dataUrl}
+          >
+            ⬇︎ &nbsp; Download PNG
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

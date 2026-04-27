@@ -23,7 +23,7 @@ const cards = [
     title: 'The Birthday Reception',
     when: 'Reception immediately following',
     where: VENUE_NAME,
-    note: 'Cake, fairy dust, and a wee bit of mischief — dress code: pink, purple, or sparkle.',
+    note: 'Cake, fairy dust, and a wee bit of mischief — come as you are.',
     icon: (
       <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 21h16" />

@@ -6,14 +6,13 @@ import Login from './components/Login.jsx';
 import RsvpForm from './components/RsvpForm.jsx';
 import Sparkles from './components/Sparkles.jsx';
 import BackgroundImages, { BackgroundCredits } from './components/BackgroundImages.jsx';
-import Godparents from './components/Godparents.jsx';
 import GuestList from './components/GuestList.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import './App.css';
 
-// Tiny hash-based router. /#godparents → Godparents page, anything else → home.
-// Hash routing is the simplest fit for GitHub Pages (no server rewrites needed)
-// and survives the BASE_URL rewrites Vite already does for assets.
+// Hash-based router for the admin guest list. The invitation flow no
+// longer uses a hash — godparent vs guest is determined entirely by the
+// invitation row in the database (invitation.is_godparent).
 function useHashRoute() {
   const [hash, setHash] = useState(() =>
     typeof window === 'undefined' ? '' : window.location.hash
@@ -30,12 +29,13 @@ export default function App() {
   const { user, ready } = useAuth();
   const hash = useHashRoute();
 
-  if (hash === '#godparents') {
-    return <Godparents />;
-  }
   if (hash === '#guests' || hash === '#admin') {
     return <GuestList />;
   }
+
+  // Whether to show the godparent flow comes from the invitation in the
+  // database, never the URL — the URL is just /?invite=<guid> for everyone.
+  const isGodparentInvitation = !!user?.invitation?.is_godparent;
 
   return (
     <div className="page">
@@ -47,11 +47,25 @@ export default function App() {
         <EventDetails />
         <Gallery />
 
+        {isGodparentInvitation && (
+          <section className="card godparents__intro">
+            <p className="card__eyebrow">A heartfelt invitation</p>
+            <h2 className="card__title godparents__title">
+              Will you be one of Avery's godparents?
+            </h2>
+            <p className="card__lede">
+              We would be deeply honoured to have you walk alongside Avery in faith and love —
+              guiding her, praying for her, and being a steady presence in her life. Submitting
+              this RSVP confirms your "yes" and reserves your seats for the celebration.
+            </p>
+          </section>
+        )}
+
         <div className="page__rsvp" id="rsvp">
           {!ready ? (
             <div className="card card--loading">Sprinkling fairy dust…</div>
           ) : user ? (
-            <RsvpForm />
+            <RsvpForm mode={isGodparentInvitation ? 'godparent' : 'guest'} />
           ) : (
             <Login />
           )}
