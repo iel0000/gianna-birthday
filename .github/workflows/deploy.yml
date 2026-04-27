@@ -50,6 +50,14 @@ jobs:
           VITE_HOST_EMAIL: ${{ secrets.VITE_HOST_EMAIL }}
           VITE_SITE_URL: ${{ steps.pages.outputs.origin }}${{ steps.pages.outputs.base_path }}/
 
+          # Supabase credentials — define these as repository secrets in
+          # Settings → Secrets and variables → Actions. Leaving them unset
+          # means RSVPs save locally only; nothing reaches the database.
+          # These are public keys (safe to ship in the bundle); RLS in
+          # supabase/schema.sql keeps the data private.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

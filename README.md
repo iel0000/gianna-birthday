@@ -11,7 +11,8 @@ A pink-and-purple fairy-themed React invitation site with login-gated RSVP and t
 
 - React 18 + Vite
 - Plain CSS with custom properties (no UI library — keeps the bundle tiny)
-- localStorage for guest sessions and RSVP records
+- localStorage drives the per-guest "already submitted" lock
+- [Supabase](https://supabase.com) (Postgres + RLS) is the canonical RSVP store the host reads from
 - [EmailJS](https://www.emailjs.com) for sending confirmation emails directly from the browser
 
 ## Run locally
@@ -27,6 +28,28 @@ The dev server opens at <http://localhost:5173>. Use the magic word `fairy` on t
 ## Add Gianna's photos
 
 Drop image files into [`public/photos/`](public/photos/) using the filenames listed in that folder's [`README`](public/photos/README.md). Until a file exists, the page shows a soft "Photo coming soon" placeholder.
+
+## Wire up Supabase (RSVP database)
+
+The app mirrors every submitted RSVP into a Supabase Postgres table so you have a real guest list to query. Local storage still drives the UI lock — Supabase is the source of truth for the host.
+
+1. Sign up at <https://supabase.com> (free tier is plenty for this).
+2. Create a new project. Wait for it to finish provisioning (~1 minute).
+3. **Run the schema**: in the project, open *Database → SQL Editor → New query*, paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. This creates the `rsvps` table, a unique index on email, and the Row Level Security policies that allow guests to insert/upsert but never read each other's RSVPs.
+4. Copy your project URL and **anon** key from *Settings → API*. Add both to your `.env.local`:
+
+```env
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<the long anon key>
+```
+
+5. For the deployed site, add the same two values as repository secrets at *Settings → Secrets and variables → Actions*. Re-run the GitHub Actions workflow so the new secrets are baked into the build.
+
+### Reading the guest list
+
+You won't see RSVPs in the browser (RLS prevents that). Read them from the Supabase dashboard at *Table Editor → `rsvps`* — sortable, filterable, exportable to CSV. The host's session in the dashboard uses the service role key and bypasses RLS automatically.
+
+If Supabase is unconfigured the site keeps working — RSVPs save locally and the email confirmation still fires. The browser console logs `[RSVP db] not persisted to Supabase: <reason>` when a write fails.
 
 ## Wire up email confirmations
 

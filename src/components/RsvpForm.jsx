@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { getRsvpFor, saveRsvp } from '../utils/storage.js';
 import { sendRsvpEmails } from '../utils/emailService.js';
 import { isEmailConfigured } from '../utils/emailConfig.js';
+import { persistRsvpToSupabase } from '../utils/rsvpDb.js';
 
 const initialState = {
   attending: 'yes',
@@ -49,11 +50,22 @@ export default function RsvpForm() {
     const saved = saveRsvp(user.email, rsvp);
     setSubmitted(saved);
 
-    const emailResult = await sendRsvpEmails({ user, rsvp: saved });
+    // Mirror to Supabase in parallel with the email — both are best-effort.
+    // The local save above is the source of truth for the UX lock.
+    const [emailResult, dbResult] = await Promise.all([
+      sendRsvpEmails({ user, rsvp: saved }),
+      persistRsvpToSupabase({ user, rsvp: saved })
+    ]);
     if (emailResult.sent) {
       setEmailNote('A confirmation has fluttered into your inbox. ✨');
     } else {
       setEmailNote(`RSVP saved. Email note: ${emailResult.reason}`);
+    }
+
+    // Soft-log db result to the console — guests don't need to see this,
+    // but if writes are silently failing the host needs to know.
+    if (!dbResult.ok) {
+      console.warn('[RSVP db] not persisted to Supabase:', dbResult.reason);
     }
 
     setSubmitting(false);
