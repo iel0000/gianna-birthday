@@ -91,6 +91,38 @@ export async function createInvitation({ name, seats, isGodparent }) {
   return { ok: true, invitation: data };
 }
 
+export async function updateInvitation({ guid, name, seats, isGodparent }) {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'Supabase is not configured.' };
+  }
+  const cleanGuid = String(guid || '').trim().toLowerCase();
+  const cleanName = String(name || '').trim();
+  const seatNum = Math.max(1, Math.min(12, Math.floor(Number(seats) || 1)));
+  if (!cleanGuid) {
+    return { ok: false, reason: 'Missing invitation id.' };
+  }
+  if (!cleanName) {
+    return { ok: false, reason: 'Please enter the guest name.' };
+  }
+
+  const { data, error } = await supabase
+    .from('invitations')
+    .update({
+      name: cleanName,
+      seats: seatNum,
+      is_godparent: !!isGodparent
+    })
+    .eq('guid', cleanGuid)
+    .select('id, guid, name, seats, is_godparent, created_at')
+    .single();
+
+  if (error) {
+    console.error('[Invitation db] update failed', error);
+    return { ok: false, reason: error.message };
+  }
+  return { ok: true, invitation: data };
+}
+
 export async function deleteInvitation(guid) {
   if (!isSupabaseConfigured()) return { ok: false, reason: 'Supabase is not configured.' };
   const { error } = await supabase.from('invitations').delete().eq('guid', guid);

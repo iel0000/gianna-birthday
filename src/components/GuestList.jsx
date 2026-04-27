@@ -5,6 +5,7 @@ import BackgroundImages from './BackgroundImages.jsx';
 import {
   fetchAllRsvps,
   createInvitation,
+  updateInvitation,
   deleteInvitation,
   fetchAllInvitationsWithStatus
 } from '../utils/rsvpDb.js';
@@ -377,6 +378,7 @@ function InvitationManager({ invitations, onChanged }) {
   const [error, setError] = useState('');
   const [copiedGuid, setCopiedGuid] = useState(null);
   const [qrInvitation, setQrInvitation] = useState(null);
+  const [editingInvitation, setEditingInvitation] = useState(null);
 
   const totalInvitations = invitations.length;
   const totalInvitationSeats = useMemo(
@@ -560,6 +562,13 @@ function InvitationManager({ invitations, onChanged }) {
                     </button>
                     <button
                       type="button"
+                      className="btn btn--ghost guests__action-btn"
+                      onClick={() => setEditingInvitation(inv)}
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      type="button"
                       className="btn btn--ghost guests__action-btn guests__action-btn--danger"
                       onClick={() => onDelete(inv)}
                     >
@@ -579,7 +588,138 @@ function InvitationManager({ invitations, onChanged }) {
           onClose={() => setQrInvitation(null)}
         />
       )}
+
+      {editingInvitation && (
+        <EditInvitationModal
+          invitation={editingInvitation}
+          onClose={() => setEditingInvitation(null)}
+          onSaved={() => {
+            setEditingInvitation(null);
+            onChanged?.();
+          }}
+        />
+      )}
     </section>
+  );
+}
+
+function EditInvitationModal({ invitation, onClose, onSaved }) {
+  const [name, setName] = useState(invitation.name);
+  const [seats, setSeats] = useState(invitation.seats);
+  const [isGodparent, setIsGodparent] = useState(!!invitation.is_godparent);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !submitting) onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, submitting]);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!name.trim()) {
+      setError('Please enter the guest name.');
+      return;
+    }
+    setSubmitting(true);
+    const res = await updateInvitation({
+      guid: invitation.guid,
+      name,
+      seats,
+      isGodparent
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      setError(res.reason);
+      return;
+    }
+    onSaved?.();
+  };
+
+  return (
+    <div
+      className="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Edit invitation for ${invitation.name}`}
+      onClick={() => !submitting && onClose()}
+    >
+      <div className="modal__inner" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="modal__close"
+          onClick={onClose}
+          aria-label="Close"
+          disabled={submitting}
+        >
+          ×
+        </button>
+
+        <p className="card__eyebrow">Edit invitation</p>
+        <h3 className="modal__title">For {invitation.name}</h3>
+
+        <form className="form" onSubmit={onSubmit}>
+          <label className="form__field">
+            <span>Guest name</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              required
+            />
+          </label>
+
+          <label className="form__field">
+            <span>Seats</span>
+            <input
+              type="number"
+              min="1"
+              max="12"
+              value={seats}
+              onChange={(e) => setSeats(Number(e.target.value))}
+            />
+          </label>
+
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={isGodparent}
+              onChange={(e) => setIsGodparent(e.target.checked)}
+            />
+            <span className="switch__track" aria-hidden="true">
+              <span className="switch__thumb" />
+            </span>
+            <span className="switch__label">Mark as godparent invitation</span>
+          </label>
+
+          {error && (
+            <div className="form__error" role="alert">
+              {error}
+            </div>
+          )}
+
+          <div className="modal__actions">
+            <button type="submit" className="btn btn--primary" disabled={submitting}>
+              {submitting ? 'Saving…' : 'Save changes'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
