@@ -9,7 +9,6 @@ const cards = [
   {
     title: 'The Christening',
     when: 'Saturday · October 3, 2026 · 1:30 PM',
-    where: VENUE_NAME,
     note: 'A blessing for our little fairy as she begins her faith journey.',
     icon: (
       <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -22,7 +21,6 @@ const cards = [
   {
     title: 'The Birthday Reception',
     when: 'Reception immediately following',
-    where: VENUE_NAME,
     note: 'Cake, fairy dust, and a wee bit of mischief — come as you are.',
     icon: (
       <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -66,7 +64,7 @@ export default function EventDetails() {
             <div className="detail-card__icon" aria-hidden="true">{card.icon}</div>
             <h3>{card.title}</h3>
             <p className="detail-card__when">{card.when}</p>
-            <p className="detail-card__where">{card.where}</p>
+            {card.where && <p className="detail-card__where">{card.where}</p>}
             <p className="detail-card__note">{card.note}</p>
           </article>
         ))}
