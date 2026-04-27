@@ -843,6 +843,18 @@
   margin-bottom: 8px;
 }
 
+.guests__signed-in {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--purple-700);
+}
+
+.admin-login {
+  width: 100%;
+  max-width: 460px;
+  margin: 60px auto;
+}
+
 .guests__stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

@@ -47,7 +47,14 @@ VITE_SUPABASE_ANON_KEY=<the long anon key>
 
 ### Reading the guest list
 
-You won't see RSVPs in the browser (RLS prevents that). Read them from the Supabase dashboard at *Table Editor → `rsvps`* — sortable, filterable, exportable to CSV. The host's session in the dashboard uses the service role key and bypasses RLS automatically.
+The site has a built-in admin guest list at <https://yoursite.com/#guests> (or `/#admin`) showing all RSVPs and godparents with stat tiles, tables, and CSV export. **It's gated by Supabase Auth** — anyone hitting the URL has to sign in with an admin account before seeing any data.
+
+**Create the admin account** (one-time):
+1. Open your Supabase project → *Authentication → Users → Add user*.
+2. Enter the email and password you want to use, and tick *Auto Confirm User*.
+3. That's it — visit `/#guests` on your site, sign in with those credentials, and the guest list loads. The session persists in your browser.
+
+If you'd rather not use the in-site page, the Supabase dashboard's *Table Editor → `rsvps`* shows the same data and bypasses any auth (it uses the service role key automatically).
 
 If Supabase is unconfigured the site keeps working — RSVPs save locally and the email confirmation still fires. The browser console logs `[RSVP db] not persisted to Supabase: <reason>` when a write fails.
 

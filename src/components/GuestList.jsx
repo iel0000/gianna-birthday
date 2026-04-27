@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import Sparkles from './Sparkles.jsx';
 import BackgroundImages from './BackgroundImages.jsx';
 import { fetchAllRsvps } from '../utils/rsvpDb.js';
+import {
+  adminSignIn,
+  adminSignOut,
+  getAdminSession,
+  onAdminAuthChange
+} from '../utils/adminAuth.js';
+import { isSupabaseConfigured } from '../utils/supabaseClient.js';
 
 // Convert an array of objects into a CSV string. Quotes any value that
 // contains a comma, quote, or newline; escapes embedded quotes.
@@ -69,12 +76,38 @@ const fmtDate = (iso) => {
 };
 
 export default function GuestList() {
+  const [session, setSession] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [data, setData] = useState({ rsvps: [], godparents: [], ok: false, reason: '' });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     document.title = "Guest list — Avery's celebration";
+
     let cancelled = false;
+    getAdminSession().then((s) => {
+      if (!cancelled) {
+        setSession(s);
+        setAuthChecked(true);
+      }
+    });
+    const unsubscribe = onAdminAuthChange((s) => {
+      if (!cancelled) setSession(s);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setData({ rsvps: [], godparents: [], ok: false, reason: '' });
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
     (async () => {
       const result = await fetchAllRsvps();
       if (!cancelled) {
@@ -85,7 +118,7 @@ export default function GuestList() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [session]);
 
   const totals = useMemo(() => {
     const yes = data.rsvps.filter((r) => r.attending);
@@ -116,6 +149,35 @@ export default function GuestList() {
     window.location.hash = '';
   };
 
+  const handleSignOut = async () => {
+    await adminSignOut();
+  };
+
+  // ─── Auth gate ───
+  if (!authChecked) {
+    return (
+      <div className="page">
+        <BackgroundImages />
+        <Sparkles />
+        <main className="page__main">
+          <section className="card card--loading">Checking your session…</section>
+        </main>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="page">
+        <BackgroundImages />
+        <Sparkles />
+        <main className="page__main">
+          <AdminLogin onSignedIn={(s) => setSession(s)} goHome={goHome} />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="page">
       <BackgroundImages />
@@ -128,9 +190,17 @@ export default function GuestList() {
           <p className="guests__subtitle">
             Live data from Supabase — refreshes when you reload the page.
           </p>
-          <button type="button" className="link-button" onClick={goHome}>
-            ← back to the invitation
-          </button>
+          <p className="guests__signed-in">
+            Signed in as <strong>{session.user?.email}</strong>
+            {' · '}
+            <button type="button" className="link-button" onClick={handleSignOut}>
+              sign out
+            </button>
+            {' · '}
+            <button type="button" className="link-button" onClick={goHome}>
+              back to the invitation
+            </button>
+          </p>
         </header>
 
         {loading ? (
@@ -267,5 +337,85 @@ function Stat({ label, value, accent }) {
       <div className="guests__stat-value">{value}</div>
       <div className="guests__stat-label">{label}</div>
     </div>
+  );
+}
+
+function AdminLogin({ onSignedIn, goHome }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!email.trim() || !password) {
+      setError('Please enter your admin email and password.');
+      return;
+    }
+    setSubmitting(true);
+    const result = await adminSignIn({ email, password });
+    setSubmitting(false);
+    if (!result.ok) {
+      setError(result.reason);
+      return;
+    }
+    onSignedIn?.(result.session);
+  };
+
+  return (
+    <section className="card admin-login" aria-label="Admin sign in">
+      <p className="card__eyebrow">Host access only</p>
+      <h2 className="card__title">Sign in to view the guest list</h2>
+      <p className="card__lede">
+        This page is restricted to the admin account. Sign in with the email and password set up
+        in your Supabase project's Authentication panel.
+      </p>
+
+      {!isSupabaseConfigured() && (
+        <div className="banner banner--info">
+          Supabase is not configured for this site, so admin sign-in is unavailable. Set
+          <code> VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> first.
+        </div>
+      )}
+
+      <form className="form" onSubmit={onSubmit} noValidate>
+        <label className="form__field">
+          <span>Admin email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            placeholder="you@example.com"
+            required
+          />
+        </label>
+
+        <label className="form__field">
+          <span>Password</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            placeholder="•••••••••"
+            required
+          />
+        </label>
+
+        {error && <div className="form__error" role="alert">{error}</div>}
+
+        <button type="submit" className="btn btn--primary" disabled={submitting}>
+          {submitting ? 'Signing you in…' : 'Sign in'}
+        </button>
+      </form>
+
+      <p className="godparents__back">
+        <button type="button" className="link-button" onClick={goHome}>
+          ← back to the invitation
+        </button>
+      </p>
+    </section>
   );
 }
