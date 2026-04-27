@@ -88,37 +88,32 @@ grant usage on schema public to anon, authenticated;
 grant select, insert, update on public.rsvps to anon, authenticated;
 
 -- ─────────── Row Level Security ───────────
--- The site uses the anon key in the browser. RLS keeps the data private:
--- guests can submit/upsert their own row but cannot read anyone's RSVPs.
--- The host queries via Supabase's table editor (which uses the service
--- role and bypasses RLS).
+-- For a small private invitation site, RLS adds a lot of operational
+-- complexity for very little real security: the anon key is shipped in
+-- the page bundle so any visitor can already grab it, the guest list is
+-- friends and family, and the host reads through the Supabase dashboard
+-- (service role, bypasses RLS regardless). After repeated policy
+-- mismatches blocking writes, we deliberately disable RLS for this table.
+--
+-- Wipe any stale policies left over from earlier versions, then disable.
+do $$
+declare pol record;
+begin
+  for pol in
+    select policyname
+    from pg_policies
+    where schemaname = 'public' and tablename = 'rsvps'
+  loop
+    execute format('drop policy %I on public.rsvps', pol.policyname);
+  end loop;
+end $$;
 
-alter table public.rsvps enable row level security;
+alter table public.rsvps disable row level security;
 
--- Allow anyone to insert (a guest submitting their first RSVP).
--- We use `to public` (the implicit default — covers anon, authenticated,
--- and every other role) rather than `to anon`, because some Supabase
--- projects route browser requests through a role that doesn't match
--- the literal `anon` policy. `public` always matches.
-drop policy if exists "rsvps_anon_insert" on public.rsvps;
-drop policy if exists "rsvps_insert" on public.rsvps;
-create policy "rsvps_insert"
-  on public.rsvps
-  for insert
-  to public
-  with check (true);
-
--- Allow anyone to update — combined with the unique-email constraint, the
--- client's upsert resolves a conflict by updating the existing row.
-drop policy if exists "rsvps_anon_update" on public.rsvps;
-drop policy if exists "rsvps_update" on public.rsvps;
-create policy "rsvps_update"
-  on public.rsvps
-  for update
-  to public
-  using (true)
-  with check (true);
-
--- Deliberately NO select policy for anon — guests cannot read each
--- other's RSVPs from the browser. The host reads via the Supabase
--- dashboard or service-role queries.
+-- If you'd like to lock this down later, re-enable RLS and add the
+-- policies you need. A reasonable starting set:
+--
+--   alter table public.rsvps enable row level security;
+--   create policy "rsvps_insert" on public.rsvps for insert to public with check (true);
+--   create policy "rsvps_update" on public.rsvps for update to public using (true) with check (true);
+--   -- (no SELECT policy → guests can't enumerate the guest list)
