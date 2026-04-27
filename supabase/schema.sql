@@ -87,22 +87,26 @@ create trigger rsvps_touch_updated_at
 alter table public.rsvps enable row level security;
 
 -- Allow anyone to insert (a guest submitting their first RSVP).
+-- We use `to public` (the implicit default — covers anon, authenticated,
+-- and every other role) rather than `to anon`, because some Supabase
+-- projects route browser requests through a role that doesn't match
+-- the literal `anon` policy. `public` always matches.
 drop policy if exists "rsvps_anon_insert" on public.rsvps;
-create policy "rsvps_anon_insert"
+drop policy if exists "rsvps_insert" on public.rsvps;
+create policy "rsvps_insert"
   on public.rsvps
   for insert
-  to anon
+  to public
   with check (true);
 
 -- Allow anyone to update — combined with the unique-email constraint, the
 -- client's upsert resolves a conflict by updating the existing row.
--- (If you want stricter behaviour later, replace this with a policy that
--- only allows updating the matched email via a server-side function.)
 drop policy if exists "rsvps_anon_update" on public.rsvps;
-create policy "rsvps_anon_update"
+drop policy if exists "rsvps_update" on public.rsvps;
+create policy "rsvps_update"
   on public.rsvps
   for update
-  to anon
+  to public
   using (true)
   with check (true);
 
