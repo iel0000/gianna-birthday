@@ -11,12 +11,17 @@
 // Until these are filled in, the RSVP will still save locally and the UI will
 // tell you that emails are not configured.
 
+// Trim any stray whitespace / newlines that often sneak in when pasting
+// secrets into GitHub Actions or .env files — those characters cause
+// EmailJS to reject the address as "corrupted".
+const clean = (v) => (typeof v === 'string' ? v.trim() : '');
+
 export const emailConfig = {
-  serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID || '',
-  guestTemplateId: import.meta.env.VITE_EMAILJS_GUEST_TEMPLATE_ID || '',
-  hostTemplateId: import.meta.env.VITE_EMAILJS_HOST_TEMPLATE_ID || '',
-  publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '',
-  hostEmail: import.meta.env.VITE_HOST_EMAIL || 'ariel.magsino@hivve.tech',
+  serviceId: clean(import.meta.env.VITE_EMAILJS_SERVICE_ID),
+  guestTemplateId: clean(import.meta.env.VITE_EMAILJS_GUEST_TEMPLATE_ID),
+  hostTemplateId: clean(import.meta.env.VITE_EMAILJS_HOST_TEMPLATE_ID),
+  publicKey: clean(import.meta.env.VITE_EMAILJS_PUBLIC_KEY),
+  hostEmail: clean(import.meta.env.VITE_HOST_EMAIL) || 'ariel.magsino@hivve.tech',
   hostName: 'Ariel Magsino'
 };
 
