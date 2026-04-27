@@ -1221,6 +1221,35 @@
   background: rgba(217, 73, 148, 0.1);
 }
 
+.row-actions__item--disabled,
+.row-actions__item:disabled {
+  color: rgba(111, 78, 209, 0.45);
+  cursor: not-allowed;
+}
+
+.row-actions__item--disabled:hover,
+.row-actions__item:disabled:hover {
+  background: transparent;
+}
+
+/* ---------- Section actions row + import/export banner ---------- */
+.guests__section-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.banner--ok {
+  background: linear-gradient(135deg, rgba(255, 179, 217, 0.22), rgba(200, 168, 255, 0.22));
+  border: 1px solid rgba(160, 124, 255, 0.4);
+  color: var(--purple-900);
+}
+
+.banner__dismiss {
+  margin-left: 10px;
+  font-size: 0.78rem;
+}
+
 .row-actions__icon {
   font-size: 1rem;
   width: 20px;

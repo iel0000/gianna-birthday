@@ -8,8 +8,10 @@ import {
   createInvitation,
   updateInvitation,
   deleteInvitation,
+  bulkCreateInvitations,
   fetchAllInvitationsWithStatus
 } from '../utils/rsvpDb.js';
+import { parseCsv, buildHeaderIndex } from '../utils/csv.js';
 import {
   adminSignIn,
   adminSignOut,
@@ -494,8 +496,11 @@ function RowActions({ items }) {
                 key={i}
                 type="button"
                 role="menuitem"
-                className={`row-actions__item ${item.danger ? 'row-actions__item--danger' : ''}`}
+                disabled={item.disabled}
+                title={item.disabled ? item.disabledHint || '' : undefined}
+                className={`row-actions__item ${item.danger ? 'row-actions__item--danger' : ''} ${item.disabled ? 'row-actions__item--disabled' : ''}`}
                 onClick={() => {
+                  if (item.disabled) return;
                   item.onClick();
                   setOpen(false);
                 }}
@@ -531,6 +536,9 @@ function InvitationManager({ invitations, onChanged }) {
   const [copiedGuid, setCopiedGuid] = useState(null);
   const [qrInvitation, setQrInvitation] = useState(null);
   const [editingInvitation, setEditingInvitation] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const fileInputRef = useRef(null);
 
   const totalInvitations = invitations.length;
   const totalInvitationSeats = useMemo(
@@ -579,6 +587,81 @@ function InvitationManager({ invitations, onChanged }) {
     onChanged?.();
   };
 
+  const onImportClick = () => fileInputRef.current?.click();
+
+  const onFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-importing the same file
+    if (!file) return;
+
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const text = await file.text();
+      const parsed = parseCsv(text);
+      if (parsed.length < 2) {
+        setImportResult({
+          ok: false,
+          reason: 'CSV is empty or has no data rows.',
+          inserted: 0,
+          skipped: 0,
+          errors: []
+        });
+        setImporting(false);
+        return;
+      }
+
+      const [header, ...dataRows] = parsed;
+      const idx = buildHeaderIndex(header);
+      const nameCol = idx.find('name', 'guest name', 'guest');
+      const seatsCol = idx.find('seats', 'seat count', 'reserved seats');
+      const godparentCol = idx.find(
+        'godparent',
+        'is godparent',
+        'is_godparent',
+        'type'
+      );
+
+      if (nameCol === -1) {
+        setImportResult({
+          ok: false,
+          reason: 'CSV must have a "Name" column.',
+          inserted: 0,
+          skipped: 0,
+          errors: []
+        });
+        setImporting(false);
+        return;
+      }
+
+      const isTruthy = (v) =>
+        /^(yes|true|y|1|godparent|💜)$/i.test(String(v || '').trim());
+
+      const rows = dataRows
+        .filter((cells) => cells.some((c) => String(c).trim()))
+        .map((cells) => ({
+          name: cells[nameCol],
+          seats: seatsCol >= 0 ? cells[seatsCol] : 1,
+          isGodparent: godparentCol >= 0 ? isTruthy(cells[godparentCol]) : false
+        }));
+
+      const result = await bulkCreateInvitations(rows);
+      setImportResult(result);
+      if (result.ok || result.inserted > 0) onChanged?.();
+    } catch (err) {
+      console.error('[CSV import] failed', err);
+      setImportResult({
+        ok: false,
+        reason: err?.message || 'Failed to read the CSV.',
+        inserted: 0,
+        skipped: 0,
+        errors: []
+      });
+    }
+    setImporting(false);
+  };
+
   const exportInvitations = () => {
     const stamp = new Date().toISOString().slice(0, 10);
     const cols = [
@@ -606,15 +689,64 @@ function InvitationManager({ invitations, onChanged }) {
             <span className="guests__count">{totalInvitationSeats} seats reserved</span>
           )}
         </h2>
-        <button
-          type="button"
-          className="btn btn--primary guests__export"
-          onClick={exportInvitations}
-          disabled={invitations.length === 0}
-        >
-          ⬇︎ &nbsp; Export to CSV
-        </button>
+        <div className="guests__section-actions">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={onFileChange}
+            style={{ display: 'none' }}
+          />
+          <button
+            type="button"
+            className="btn btn--ghost guests__export"
+            onClick={onImportClick}
+            disabled={importing}
+            title="Upload a CSV with columns: Name, Seats, Godparent"
+          >
+            ⬆︎ &nbsp; {importing ? 'Importing…' : 'Import CSV'}
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary guests__export"
+            onClick={exportInvitations}
+            disabled={invitations.length === 0}
+          >
+            ⬇︎ &nbsp; Export to CSV
+          </button>
+        </div>
       </div>
+
+      {importResult && (
+        <div
+          className={`banner ${importResult.ok ? 'banner--ok' : 'banner--info'}`}
+          role="status"
+        >
+          {importResult.ok ? (
+            <>
+              ✨ Imported <strong>{importResult.inserted}</strong>{' '}
+              {importResult.inserted === 1 ? 'invitation' : 'invitations'}.
+              {importResult.skipped > 0 && (
+                <> Skipped {importResult.skipped} (missing name).</>
+              )}
+            </>
+          ) : (
+            <>
+              <strong>Import didn't go through:</strong> {importResult.reason}
+              {importResult.inserted > 0 && (
+                <> ({importResult.inserted} were saved before the failure.)</>
+              )}
+            </>
+          )}
+          <button
+            type="button"
+            className="link-button banner__dismiss"
+            onClick={() => setImportResult(null)}
+          >
+            dismiss
+          </button>
+        </div>
+      )}
 
       <form className="form invitation-form" onSubmit={onCreate}>
         <div className="invitation-form__row">
@@ -712,13 +844,27 @@ function InvitationManager({ invitations, onChanged }) {
                         {
                           icon: '✏️',
                           label: 'Edit',
-                          onClick: () => setEditingInvitation(inv)
+                          onClick: () => setEditingInvitation(inv),
+                          disabled: inv.status !== 'pending',
+                          disabledHint:
+                            inv.status === 'attending'
+                              ? 'Already RSVP’d — cannot edit'
+                              : inv.status === 'declined'
+                                ? 'Guest declined — cannot edit'
+                                : ''
                         },
                         {
                           icon: '🗑️',
                           label: 'Delete',
                           onClick: () => onDelete(inv),
-                          danger: true
+                          danger: true,
+                          disabled: inv.status !== 'pending',
+                          disabledHint:
+                            inv.status === 'attending'
+                              ? 'Already RSVP’d — cannot delete'
+                              : inv.status === 'declined'
+                                ? 'Guest declined — cannot delete'
+                                : ''
                         }
                       ]}
                     />

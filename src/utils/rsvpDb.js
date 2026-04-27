@@ -123,6 +123,70 @@ export async function updateInvitation({ guid, name, seats, isGodparent }) {
   return { ok: true, invitation: data };
 }
 
+// Bulk-insert invitations from a CSV import. Each row is validated; any
+// row missing a name (or otherwise unusable) is skipped and reported.
+export async function bulkCreateInvitations(rows) {
+  if (!isSupabaseConfigured()) {
+    return {
+      ok: false,
+      reason: 'Supabase is not configured.',
+      inserted: 0,
+      skipped: rows?.length || 0,
+      errors: []
+    };
+  }
+
+  const valid = [];
+  const errors = [];
+  rows.forEach((row, idx) => {
+    const lineNumber = idx + 2; // +1 for header, +1 for 1-based numbering
+    const name = String(row.name || '').trim();
+    const seats = Math.max(1, Math.min(12, Math.floor(Number(row.seats) || 1)));
+    if (!name) {
+      errors.push({ line: lineNumber, reason: 'missing name' });
+      return;
+    }
+    valid.push({
+      name,
+      seats,
+      is_godparent: !!row.isGodparent
+    });
+  });
+
+  if (valid.length === 0) {
+    return {
+      ok: false,
+      reason: errors.length ? 'No valid rows to import.' : 'CSV had no data rows.',
+      inserted: 0,
+      skipped: rows.length,
+      errors
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('invitations')
+    .insert(valid)
+    .select('id, guid, name, seats, is_godparent, created_at');
+
+  if (error) {
+    console.error('[Invitation db] bulk insert failed', error);
+    return {
+      ok: false,
+      reason: error.message,
+      inserted: 0,
+      skipped: rows.length,
+      errors
+    };
+  }
+
+  return {
+    ok: true,
+    inserted: data.length,
+    skipped: errors.length,
+    errors
+  };
+}
+
 export async function deleteInvitation(guid) {
   if (!isSupabaseConfigured()) return { ok: false, reason: 'Supabase is not configured.' };
   const { error } = await supabase.from('invitations').delete().eq('guid', guid);
