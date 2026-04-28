@@ -32,13 +32,32 @@ export async function persistRsvpToSupabase({ user, rsvp }) {
   // Prefer the invitation_id as the upsert key — it's the new natural key.
   // For legacy submissions without an invitation, fall back to email.
   const onConflict = invitationId ? 'invitation_id' : 'email';
-  const { error } = await supabase
-    .from('rsvps')
-    .upsert(row, { onConflict });
+
+  let error;
+  try {
+    const res = await supabase.from('rsvps').upsert(row, { onConflict });
+    error = res.error;
+  } catch (thrown) {
+    // Network failure or other thrown error — capture the whole shape.
+    console.error('[RSVP db] upsert threw', thrown);
+    return {
+      ok: false,
+      reason:
+        thrown?.message ||
+        thrown?.toString?.() ||
+        'Network error reaching Supabase'
+    };
+  }
 
   if (error) {
     console.error('[RSVP db] upsert failed', error);
-    return { ok: false, reason: error.message };
+    const reason =
+      error.message ||
+      error.details ||
+      error.hint ||
+      (error.code ? `Postgres ${error.code}` : '') ||
+      'Supabase rejected the upsert';
+    return { ok: false, reason };
   }
 
   return { ok: true };

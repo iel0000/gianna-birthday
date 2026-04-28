@@ -127,18 +127,30 @@ export default function RsvpForm({ mode = 'guest' }) {
 
     // Email only fires when the guest provided one. The godparent flag
     // is captured directly on the rsvps row via persistRsvpToSupabase, so
-    // there's no separate godparents-table write any more.
-    const [emailResult, dbResult] = await Promise.all([
-      typedEmail || userForSubmit.email
-        ? sendRsvpEmails({ user: userForSubmit, rsvp: saved })
-        : Promise.resolve({ sent: false, reason: 'no email provided' }),
-      persistRsvpToSupabase({ user: userForSubmit, rsvp: saved })
-    ]);
+    // there's no separate godparents-table write any more. Promise.all is
+    // wrapped in try/catch so an unhandled rejection never disappears
+    // silently — the locked summary still renders, with a real reason
+    // surfaced in dbNote.
+    let emailResult = { sent: false, reason: 'unknown' };
+    let dbResult = { ok: false, reason: 'unknown' };
+    try {
+      [emailResult, dbResult] = await Promise.all([
+        typedEmail || userForSubmit.email
+          ? sendRsvpEmails({ user: userForSubmit, rsvp: saved })
+          : Promise.resolve({ sent: false, reason: 'no email provided' }),
+        persistRsvpToSupabase({ user: userForSubmit, rsvp: saved })
+      ]);
+    } catch (err) {
+      console.error('[RSVP] post-submit task threw', err);
+      const reason = err?.message || err?.toString?.() || 'unknown error';
+      dbResult = { ok: false, reason };
+      emailResult = { sent: false, reason };
+    }
 
     if (emailResult.sent) {
       setEmailNote('A confirmation has fluttered into your inbox. ✨');
     } else {
-      setEmailNote(`RSVP saved. Email note: ${emailResult.reason}`);
+      setEmailNote(`RSVP saved. Email note: ${emailResult.reason || 'no detail'}`);
     }
 
     if (dbResult.ok) {
@@ -148,8 +160,9 @@ export default function RsvpForm({ mode = 'guest' }) {
           : 'Saved to the guest list ✓'
       );
     } else {
-      console.warn('[RSVP db] persist failed:', dbResult.reason);
-      setDbNote(`Database note: ${dbResult.reason}`);
+      const reason = dbResult.reason || 'no detail provided';
+      console.warn('[RSVP db] persist failed:', reason, dbResult);
+      setDbNote(`Database note: ${reason}`);
     }
 
     setSubmitting(false);
