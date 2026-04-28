@@ -127,7 +127,7 @@ These have been earned, not imagined.
 
 - **`invitations` is the entry point.** GUID = URL token = primary identity. Don't add another identifier.
 - **Upsert on `invitation_id`** for new RSVPs; fall back to `email` only for legacy rows.
-- **`is_godparent` lives on `rsvps`.** The standalone `godparents` table is deprecated — keep it in the schema for old data, don't write to it from new code.
+- **`is_godparent` lives on `rsvps`.** No separate godparents table — schema.sql actually drops it on every run for projects coming from the older two-table flow.
 - **RLS is OFF.** Disabled deliberately after multiple policy mismatches. The admin page is gated at the application layer via Supabase Auth. If you ever re-enable RLS, the schema has the policy snippet ready in a comment block.
 - **Triggers do the boring work** — `normalize_rsvp_email` lowercases on every write, `touch_updated_at` bumps the timestamp.
 - **Always use `if not exists` / `do $$` guards** in `supabase/schema.sql` so re-running the script is safe on a populated database.

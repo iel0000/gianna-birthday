@@ -197,47 +197,11 @@ alter table public.invitations disable row level security;
 
 
 -- ─────────────────────────────────────────────────────────────────
--- Deprecated: godparents table
+-- Cleanup: drop the deprecated godparents table
 -- ─────────────────────────────────────────────────────────────────
--- The earlier flow had a standalone /#godparents page that wrote to
--- this table. The current flow puts the godparent answer directly on
--- the rsvps row (rsvps.is_godparent), and the admin guest list reads
--- godparent count from there.
---
--- The table is left in place so older projects don't lose data and so
--- a migration step elsewhere can copy is_godparent across if needed.
--- New code does not write here. If you're starting fresh, you can drop
--- this whole block.
-create table if not exists public.godparents (
-  id            bigint generated always as identity primary key,
-  email         text        not null,
-  name          text        not null,
-  message       text,
-  responded_at  timestamptz not null default now(),
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
-);
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint
-    where conname = 'godparents_email_key'
-      and conrelid = 'public.godparents'::regclass
-  ) then
-    alter table public.godparents add constraint godparents_email_key unique (email);
-  end if;
-end $$;
-
-drop trigger if exists godparents_normalize_email on public.godparents;
-create trigger godparents_normalize_email
-  before insert or update on public.godparents
-  for each row execute function public.normalize_rsvp_email();
-
-drop trigger if exists godparents_touch_updated_at on public.godparents;
-create trigger godparents_touch_updated_at
-  before update on public.godparents
-  for each row execute function public.touch_updated_at();
-
-grant select, insert, update on public.godparents to anon, authenticated;
-alter table public.godparents disable row level security;
+-- The earlier flow had a standalone /#godparents page backed by a
+-- separate godparents table. The current flow puts the godparent
+-- answer directly on rsvps.is_godparent, so this table is no longer
+-- read or written by any code path. Drop it (idempotently — if it's
+-- already gone the statement is a no-op).
+drop table if exists public.godparents cascade;
