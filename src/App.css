@@ -762,7 +762,8 @@
 .reserved-seats__count {
   font-family: 'Great Vibes', cursive;
   font-size: 4.5rem;
-  line-height: 1;
+  line-height: 1.2;
+  padding: 0.08em 0.15em;
   background: linear-gradient(135deg, #d94994 0%, #a07cff 100%);
   -webkit-background-clip: text;
   background-clip: text;
