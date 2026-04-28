@@ -37,22 +37,6 @@ function loadImage(src) {
   });
 }
 
-function fmtDate(iso) {
-  if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
-  } catch {
-    return iso;
-  }
-}
-
 // Renders the personalised invitation card onto an offscreen canvas
 // and returns it as a PNG data URL. Layout is portrait 800×1200 so it
 // looks like a printable ticket / pass.
@@ -243,7 +227,7 @@ export async function generateInvitationCard({ user, rsvp, inviteUrl }) {
 
     ctx.fillStyle = '#8a7aaa';
     ctx.font = '500 12px "Quicksand", sans-serif';
-    ctx.fillText('Show this at the door  ·  ' + fmtDate(rsvp.submittedAt), cx, qrY + qrSize + 24);
+    ctx.fillText('Show this at the door', cx, qrY + qrSize + 24);
   }
 
   return canvas.toDataURL('image/png');
