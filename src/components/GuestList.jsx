@@ -1298,21 +1298,80 @@ function EditInvitationModal({ invitation, onClose, onSaved }) {
   );
 }
 
+// Loads an image as a Promise<HTMLImageElement>. Resolves null on
+// failure (the QR is rendered without a logo overlay in that case).
+function loadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+// Generates the QR onto an offscreen canvas, then overlays the hero
+// portrait clipped to a circle in the centre. Error correction H lets
+// the QR survive ~30% obstruction, so the centre logo doesn't break
+// scanning. If the logo fails to load, falls back to a plain QR.
+async function generateQrWithLogo(url, logoSrc) {
+  const size = 480;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+
+  await QRCode.toCanvas(canvas, url, {
+    width: size,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+    color: {
+      dark: '#3d2a73',
+      light: '#ffffff'
+    }
+  });
+
+  const logo = logoSrc ? await loadImage(logoSrc) : null;
+  if (logo) {
+    const ctx = canvas.getContext('2d');
+    const logoSize = Math.round(size * 0.22); // 22% of the QR keeps it readable
+    const cx = size / 2;
+    const cy = size / 2;
+    const r = logoSize / 2;
+    const ringPad = 8;
+
+    // Solid white pad behind the logo so the QR modules around it stay
+    // readable and the photo doesn't blend into the dark dots.
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + ringPad, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Clip the logo to a circle.
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(logo, cx - r, cy - r, logoSize, logoSize);
+    ctx.restore();
+
+    // Pink ring around the logo to match the site's accents.
+    ctx.strokeStyle = '#d94994';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  return canvas.toDataURL('image/png');
+}
+
 function QrModal({ invitation, onClose }) {
   const [dataUrl, setDataUrl] = useState('');
   const url = buildInviteUrl(invitation.guid, invitation.is_godparent);
 
   useEffect(() => {
     let cancelled = false;
-    QRCode.toDataURL(url, {
-      width: 480,
-      margin: 2,
-      errorCorrectionLevel: 'H',
-      color: {
-        dark: '#3d2a73', // --purple-900
-        light: '#ffffff'
-      }
-    })
+    const logoSrc = `${import.meta.env.BASE_URL}photos/gianna-hero.jpg`;
+    generateQrWithLogo(url, logoSrc)
       .then((d) => {
         if (!cancelled) setDataUrl(d);
       })
