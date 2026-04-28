@@ -5,8 +5,7 @@ import { sendRsvpEmails } from '../utils/emailService.js';
 import { isEmailConfigured } from '../utils/emailConfig.js';
 import {
   persistRsvpToSupabase,
-  fetchRsvpFromSupabase,
-  recordGodparent
+  fetchRsvpFromSupabase
 } from '../utils/rsvpDb.js';
 import { isValidEmail } from '../utils/validators.js';
 
@@ -126,24 +125,15 @@ export default function RsvpForm({ mode = 'guest' }) {
     const saved = saveRsvp(userForSubmit, rsvp);
     setSubmitted(saved);
 
-    const tasks = [
-      // Email only fires when the guest provided one.
+    // Email only fires when the guest provided one. The godparent flag
+    // is captured directly on the rsvps row via persistRsvpToSupabase, so
+    // there's no separate godparents-table write any more.
+    const [emailResult, dbResult] = await Promise.all([
       typedEmail || userForSubmit.email
         ? sendRsvpEmails({ user: userForSubmit, rsvp: saved })
         : Promise.resolve({ sent: false, reason: 'no email provided' }),
       persistRsvpToSupabase({ user: userForSubmit, rsvp: saved })
-    ];
-    if (isGodparent && userForSubmit.email) {
-      tasks.push(
-        recordGodparent({
-          name: userForSubmit.invitation?.name || userForSubmit.name,
-          email: userForSubmit.email,
-          message: saved.message
-        })
-      );
-    }
-
-    const [emailResult, dbResult, godparentResult] = await Promise.all(tasks);
+    ]);
 
     if (emailResult.sent) {
       setEmailNote('A confirmation has fluttered into your inbox. ✨');
@@ -151,18 +141,15 @@ export default function RsvpForm({ mode = 'guest' }) {
       setEmailNote(`RSVP saved. Email note: ${emailResult.reason}`);
     }
 
-    if (dbResult.ok && (!isGodparent || godparentResult?.ok)) {
+    if (dbResult.ok) {
       setDbNote(
         isGodparent
           ? 'Saved to the guest list and the fairy godparents ring ✨'
           : 'Saved to the guest list ✓'
       );
     } else {
-      const reason = !dbResult.ok
-        ? dbResult.reason
-        : godparentResult?.reason || 'unknown error';
-      console.warn('[RSVP db] persist failed:', reason);
-      setDbNote(`Database note: ${reason}`);
+      console.warn('[RSVP db] persist failed:', dbResult.reason);
+      setDbNote(`Database note: ${dbResult.reason}`);
     }
 
     setSubmitting(false);
