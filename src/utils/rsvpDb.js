@@ -63,6 +63,29 @@ export async function persistRsvpToSupabase({ user, rsvp }) {
   return { ok: true };
 }
 
+// Admin-side delete of an existing RSVP row by invitation_id. The
+// invitation row is left intact, so the guest can re-RSVP if they want
+// (the invitation reverts to "pending" status in the admin view).
+export async function deleteRsvpAsAdmin(invitationId) {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'Supabase is not configured.' };
+  }
+  if (!invitationId) {
+    return { ok: false, reason: 'Missing invitation id.' };
+  }
+
+  const { error } = await supabase
+    .from('rsvps')
+    .delete()
+    .eq('invitation_id', invitationId);
+
+  if (error) {
+    console.error('[RSVP db] admin delete failed', error);
+    return { ok: false, reason: error.message };
+  }
+  return { ok: true };
+}
+
 // Admin-side update of an existing RSVP row, keyed by invitation_id.
 // Used by the host to fix typos or correct details on a guest's behalf
 // without going through the guest's submission flow again.

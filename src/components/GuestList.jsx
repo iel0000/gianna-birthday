@@ -9,7 +9,8 @@ import {
   deleteInvitation,
   bulkCreateInvitations,
   fetchAllInvitationsWithStatus,
-  updateRsvpAsAdmin
+  updateRsvpAsAdmin,
+  deleteRsvpAsAdmin
 } from '../utils/rsvpDb.js';
 import { parseCsv, buildHeaderIndex } from '../utils/csv.js';
 import {
@@ -204,6 +205,19 @@ export default function GuestList() {
 
   const handleSignOut = async () => {
     await adminSignOut();
+  };
+
+  const handleDeleteRsvp = async (invitation) => {
+    const confirmed = window.confirm(
+      `Delete the RSVP from ${invitation.name}? The invitation stays in place — they can still RSVP again from their link.`
+    );
+    if (!confirmed) return;
+    const res = await deleteRsvpAsAdmin(invitation.id);
+    if (!res.ok) {
+      window.alert(`Could not delete: ${res.reason}`);
+      return;
+    }
+    refresh();
   };
 
   // ─── Auth gate ───
@@ -425,6 +439,12 @@ export default function GuestList() {
                                     icon: '✏️',
                                     label: 'Edit RSVP',
                                     onClick: () => setEditingRsvp(i)
+                                  },
+                                  {
+                                    icon: '🗑️',
+                                    label: 'Delete RSVP',
+                                    onClick: () => handleDeleteRsvp(i),
+                                    danger: true
                                   }
                                 ]}
                               />
