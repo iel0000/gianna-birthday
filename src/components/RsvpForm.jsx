@@ -30,6 +30,7 @@ export default function RsvpForm({ mode = 'guest' }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [emailError, setEmailError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -96,8 +97,6 @@ export default function RsvpForm({ mode = 'guest' }) {
     const value = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
     setForm((prev) => ({ ...prev, [field]: value }));
   };
-
-  const [emailError, setEmailError] = useState('');
 
   const onSubmit = async (e) => {
     e.preventDefault();
