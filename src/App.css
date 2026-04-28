@@ -453,6 +453,20 @@
   justify-items: center;
 }
 
+/* On phones the auto-fit minmax fall back to a single column once the
+   viewport drops below 360px (180 + 22 + 180). Force a 2-up layout
+   instead so the gallery keeps its grid shape on mobile. */
+@media (max-width: 540px) {
+  .gallery__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .gallery .photo--lg .photo__frame {
+    max-width: none;
+  }
+}
+
 .gallery .photo--lg .photo__frame {
   width: 100%;
   max-width: 220px;
