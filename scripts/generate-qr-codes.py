@@ -19,7 +19,7 @@ from qrcode.image.styles.moduledrawers.pil import RoundedModuleDrawer
 from qrcode.image.styles.colormasks import SolidFillColorMask
 from PIL import Image, ImageDraw, ImageFont
 
-DEFAULT_BASE_URL = "https://iel0000.github.io/gianna-birthday/"
+DEFAULT_BASE_URL = "http://www.gianna-avery.xyz/"
 OUTPUT_DIR = "qr-codes"
 SEAT_COUNTS = range(1, 6)
 

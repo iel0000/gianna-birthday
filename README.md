@@ -104,7 +104,7 @@ VITE_EMAILJS_PUBLIC_KEY=xxxxxxxxxxxxxxxx
 VITE_HOST_EMAIL=
 # Optional — used to build the "View or update your RSVP" link in the guest email.
 # Falls back to window.location.origin if unset (works fine for most setups).
-VITE_SITE_URL=https://giannas-birthday.example.com
+VITE_SITE_URL=http://www.gianna-avery.xyz
 ```
 
 6. Restart `npm run dev`. Until configured, RSVPs still save locally and the form will tell you emails aren't wired yet.
@@ -204,7 +204,7 @@ gianna-birthday/
 You can send each guest (or family) a link with a pre-allocated seat count. The guest still enters their name and email on the login screen — the URL only carries the seat count, never personal info:
 
 ```
-https://giannas-birthday.example.com/?seats=4
+http://www.gianna-avery.xyz/?seats=4
 ```
 
 When the guest opens the link:
@@ -262,4 +262,6 @@ That's it. Push to `main` and the [Deploy to GitHub Pages](.github/workflows/dep
 
 ### Custom domain
 
-Add a `CNAME` file in `public/` containing your domain (e.g. `giannas-birthday.com`). Set the DNS records per [GitHub's docs](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site), then in **Settings → Pages**, enter the custom domain. The workflow will detect the empty base path and asset URLs adjust automatically.
+This site is configured for the custom domain **www.gianna-avery.xyz** via the [`public/CNAME`](public/CNAME) file. Vite copies the file to `dist/` on every build, so each deploy reasserts the domain on GitHub Pages.
+
+To change the domain: edit `public/CNAME` to the new host, set the matching DNS records per [GitHub's docs](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site), then in *Settings → Pages* re-enter the new domain. The deploy workflow detects the empty base path and asset URLs adjust automatically.
