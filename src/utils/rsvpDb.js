@@ -44,6 +44,44 @@ export async function persistRsvpToSupabase({ user, rsvp }) {
   return { ok: true };
 }
 
+// Admin-side update of an existing RSVP row, keyed by invitation_id.
+// Used by the host to fix typos or correct details on a guest's behalf
+// without going through the guest's submission flow again.
+export async function updateRsvpAsAdmin({ invitationId, updates }) {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'Supabase is not configured.' };
+  }
+  if (!invitationId) {
+    return { ok: false, reason: 'Missing invitation id.' };
+  }
+
+  const row = {};
+  if ('attending' in updates) row.attending = !!updates.attending;
+  if ('seats' in updates) {
+    row.seats = Math.max(0, Math.min(12, Math.floor(Number(updates.seats) || 0)));
+  }
+  if ('bringingKids' in updates) row.bringing_kids = !!updates.bringingKids;
+  if ('kidsCount' in updates) {
+    row.kids_count = Math.max(0, Math.min(12, Math.floor(Number(updates.kidsCount) || 0)));
+  }
+  if ('isGodparent' in updates) row.is_godparent = !!updates.isGodparent;
+  if ('message' in updates) row.message = updates.message || null;
+  if ('email' in updates) {
+    row.email = updates.email ? normalizeEmail(updates.email) : null;
+  }
+
+  const { error } = await supabase
+    .from('rsvps')
+    .update(row)
+    .eq('invitation_id', invitationId);
+
+  if (error) {
+    console.error('[RSVP db] admin update failed', error);
+    return { ok: false, reason: error.message };
+  }
+  return { ok: true };
+}
+
 // ──────────── Invitations ────────────
 
 export async function fetchInvitation(guid) {
@@ -210,7 +248,7 @@ export async function fetchAllInvitationsWithStatus() {
       .order('created_at', { ascending: false }),
     supabase
       .from('rsvps')
-      .select('invitation_id, attending, seats, bringing_kids, kids_count, message, submitted_at')
+      .select('invitation_id, email, attending, seats, bringing_kids, kids_count, message, submitted_at, is_godparent')
   ]);
 
   if (invRes.error) {
@@ -226,7 +264,10 @@ export async function fetchAllInvitationsWithStatus() {
     const rsvp = rsvpByInviteId.get(inv.id);
     return {
       ...inv,
+      // Either signal flips the godparent flag — invitation row OR rsvp row
+      is_godparent: !!inv.is_godparent || !!rsvp?.is_godparent,
       status: rsvp ? (rsvp.attending ? 'attending' : 'declined') : 'pending',
+      rsvp_email: rsvp?.email || '',
       rsvp_seats: rsvp?.seats ?? null,
       rsvp_bringing_kids: rsvp?.bringing_kids || false,
       rsvp_kids_count: rsvp?.kids_count || 0,

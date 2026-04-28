@@ -4,12 +4,12 @@ import QRCode from 'qrcode';
 import Sparkles from './Sparkles.jsx';
 import BackgroundImages from './BackgroundImages.jsx';
 import {
-  fetchAllRsvps,
   createInvitation,
   updateInvitation,
   deleteInvitation,
   bulkCreateInvitations,
-  fetchAllInvitationsWithStatus
+  fetchAllInvitationsWithStatus,
+  updateRsvpAsAdmin
 } from '../utils/rsvpDb.js';
 import { parseCsv, buildHeaderIndex } from '../utils/csv.js';
 import {
@@ -58,17 +58,20 @@ function downloadCsv(filename, content) {
   URL.revokeObjectURL(url);
 }
 
+// Each row here is an invitation row joined with its rsvp data.
+// `inv.seats` = seats reserved by the admin, `inv.rsvp_seats` = seats
+// confirmed by the guest in their RSVP.
 const RSVP_COLUMNS = [
-  { label: 'Name', get: (r) => r.name },
-  { label: 'Email', get: (r) => r.email },
-  { label: 'Attending', get: (r) => (r.attending ? 'Yes' : 'No') },
-  { label: 'Seats', get: (r) => r.seats },
-  { label: 'Reserved Seats', get: (r) => r.reserved_seats ?? '' },
-  { label: 'Bringing Kids', get: (r) => (r.bringing_kids ? 'Yes' : 'No') },
-  { label: 'Kids Count', get: (r) => r.kids_count ?? 0 },
-  { label: 'Godparent', get: (r) => (r.is_godparent ? 'Yes' : 'No') },
-  { label: 'Message', get: (r) => r.message ?? '' },
-  { label: 'Submitted At', get: (r) => r.submitted_at }
+  { label: 'Name', get: (i) => i.name },
+  { label: 'Email', get: (i) => i.rsvp_email || '' },
+  { label: 'Attending', get: (i) => (i.status === 'attending' ? 'Yes' : 'No') },
+  { label: 'Reserved Seats', get: (i) => i.seats },
+  { label: 'Confirmed Seats', get: (i) => i.rsvp_seats ?? '' },
+  { label: 'Bringing Kids', get: (i) => (i.rsvp_bringing_kids ? 'Yes' : 'No') },
+  { label: 'Kids Count', get: (i) => i.rsvp_kids_count ?? 0 },
+  { label: 'Godparent', get: (i) => (i.is_godparent ? 'Yes' : 'No') },
+  { label: 'Message', get: (i) => i.rsvp_message ?? '' },
+  { label: 'Submitted At', get: (i) => i.submitted_at ?? '' }
 ];
 
 const fmtDate = (iso) => {
@@ -89,8 +92,8 @@ const fmtDate = (iso) => {
 export default function GuestList() {
   const [session, setSession] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [data, setData] = useState({ rsvps: [], godparents: [], ok: false, reason: '' });
   const [invitations, setInvitations] = useState([]);
+  const [dataState, setDataState] = useState({ ok: false, reason: '' });
   const [loading, setLoading] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const refresh = () => setRefreshTick((t) => t + 1);
@@ -100,6 +103,7 @@ export default function GuestList() {
     godparent: false,
     kids: false
   });
+  const [editingRsvp, setEditingRsvp] = useState(null);
 
   useEffect(() => {
     document.title = "Guest list — Avery's celebration";
@@ -123,20 +127,17 @@ export default function GuestList() {
 
   useEffect(() => {
     if (!session) {
-      setData({ rsvps: [], godparents: [], ok: false, reason: '' });
       setInvitations([]);
+      setDataState({ ok: false, reason: '' });
       return;
     }
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const [rsvpResult, invResult] = await Promise.all([
-        fetchAllRsvps(),
-        fetchAllInvitationsWithStatus()
-      ]);
+      const invResult = await fetchAllInvitationsWithStatus();
       if (!cancelled) {
-        setData(rsvpResult);
         setInvitations(invResult.invitations || []);
+        setDataState({ ok: invResult.ok, reason: invResult.reason || '' });
         setLoading(false);
       }
     })();
@@ -145,20 +146,27 @@ export default function GuestList() {
     };
   }, [session, refreshTick]);
 
+  // RSVPs view = invitations that have actually responded (status !== 'pending').
+  // Source is the same invitations array used by the manager — no separate fetch.
+  const respondedInvitations = useMemo(
+    () => invitations.filter((i) => i.status !== 'pending'),
+    [invitations]
+  );
+
   const filteredRsvps = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
-    return data.rsvps.filter((r) => {
+    return respondedInvitations.filter((i) => {
       if (q) {
-        const haystack = `${r.name || ''} ${r.email || ''}`.toLowerCase();
+        const haystack = `${i.name || ''} ${i.rsvp_email || ''}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
-      if (filters.status === 'attending' && !r.attending) return false;
-      if (filters.status === 'declined' && r.attending) return false;
-      if (filters.godparent && !r.is_godparent) return false;
-      if (filters.kids && !r.bringing_kids) return false;
+      if (filters.status === 'attending' && i.status !== 'attending') return false;
+      if (filters.status === 'declined' && i.status !== 'declined') return false;
+      if (filters.godparent && !i.is_godparent) return false;
+      if (filters.kids && !i.rsvp_bringing_kids) return false;
       return true;
     });
-  }, [data.rsvps, filters]);
+  }, [respondedInvitations, filters]);
 
   const filtersActive =
     filters.search ||
@@ -170,18 +178,20 @@ export default function GuestList() {
     setFilters({ search: '', status: 'all', godparent: false, kids: false });
 
   const totals = useMemo(() => {
-    const yes = data.rsvps.filter((r) => r.attending);
+    const responded = invitations.filter((i) => i.status !== 'pending');
+    const attending = responded.filter((i) => i.status === 'attending');
     return {
-      responses: data.rsvps.length,
-      attending: yes.length,
-      seats: yes.reduce((sum, r) => sum + (r.seats || 0), 0),
-      kids: yes.reduce((sum, r) => sum + (r.bringing_kids ? r.kids_count || 0 : 0), 0),
-      // Pulled directly from rsvps.is_godparent — the source of truth now
-      // that the godparent answer is captured during the RSVP itself.
-      godparents: data.rsvps.filter((r) => r.is_godparent).length,
-      declined: data.rsvps.length - yes.length
+      responses: responded.length,
+      attending: attending.length,
+      seats: attending.reduce((sum, i) => sum + (i.rsvp_seats || 0), 0),
+      kids: attending.reduce(
+        (sum, i) => sum + (i.rsvp_bringing_kids ? i.rsvp_kids_count || 0 : 0),
+        0
+      ),
+      godparents: responded.filter((i) => i.is_godparent).length,
+      declined: responded.length - attending.length
     };
-  }, [data]);
+  }, [invitations]);
 
   const exportRsvps = () => {
     const stamp = new Date().toISOString().slice(0, 10);
@@ -248,11 +258,11 @@ export default function GuestList() {
 
         {loading ? (
           <section className="card card--loading">Loading the fairy ring…</section>
-        ) : !data.ok ? (
+        ) : !dataState.ok ? (
           <section className="card">
             <h2 className="card__title">Could not load the guest list</h2>
             <p className="card__lede">
-              {data.reason || 'Supabase is not configured for this site.'}
+              {dataState.reason || 'Supabase is not configured for this site.'}
             </p>
           </section>
         ) : (
@@ -279,8 +289,8 @@ export default function GuestList() {
                   RSVPs &nbsp;
                   <span className="guests__count">
                     {filtersActive
-                      ? `${filteredRsvps.length} of ${data.rsvps.length}`
-                      : data.rsvps.length}
+                      ? `${filteredRsvps.length} of ${respondedInvitations.length}`
+                      : respondedInvitations.length}
                   </span>
                 </h2>
                 <button
@@ -353,8 +363,8 @@ export default function GuestList() {
                 )}
               </div>
 
-              {data.rsvps.length === 0 ? (
-                <p className="guests__empty">No RSVPs yet.</p>
+              {respondedInvitations.length === 0 ? (
+                <p className="guests__empty">No RSVPs yet — guests will appear here once they respond.</p>
               ) : filteredRsvps.length === 0 ? (
                 <p className="guests__empty">
                   No RSVPs match the current filters.{' '}
@@ -375,31 +385,53 @@ export default function GuestList() {
                         <th>Godparent</th>
                         <th>Message</th>
                         <th>Submitted</th>
+                        <th className="guests__actions-col">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredRsvps.map((r) => (
-                        <tr key={r.email} className={r.attending ? '' : 'guests__row--declined'}>
-                          <td>{r.name}</td>
-                          <td>
-                            <a href={`mailto:${r.email}`}>{r.email}</a>
-                          </td>
-                          <td>
-                            <span
-                              className={`guests__pill ${r.attending ? 'guests__pill--yes' : 'guests__pill--no'}`}
-                            >
-                              {r.attending ? 'Attending' : 'Declined'}
-                            </span>
-                          </td>
-                          <td className="guests__num">{r.seats}</td>
-                          <td className="guests__num">
-                            {r.bringing_kids ? r.kids_count || 0 : ''}
-                          </td>
-                          <td>{r.is_godparent ? '💜' : ''}</td>
-                          <td className="guests__msg">{r.message || '—'}</td>
-                          <td className="guests__when">{fmtDate(r.submitted_at)}</td>
-                        </tr>
-                      ))}
+                      {filteredRsvps.map((i) => {
+                        const attending = i.status === 'attending';
+                        return (
+                          <tr
+                            key={i.guid}
+                            className={attending ? '' : 'guests__row--declined'}
+                          >
+                            <td>{i.name}</td>
+                            <td>
+                              {i.rsvp_email ? (
+                                <a href={`mailto:${i.rsvp_email}`}>{i.rsvp_email}</a>
+                              ) : (
+                                <span style={{ color: 'var(--purple-700)', opacity: 0.5 }}>—</span>
+                              )}
+                            </td>
+                            <td>
+                              <span
+                                className={`guests__pill ${attending ? 'guests__pill--yes' : 'guests__pill--no'}`}
+                              >
+                                {attending ? 'Attending' : 'Declined'}
+                              </span>
+                            </td>
+                            <td className="guests__num">{i.rsvp_seats ?? ''}</td>
+                            <td className="guests__num">
+                              {i.rsvp_bringing_kids ? i.rsvp_kids_count || 0 : ''}
+                            </td>
+                            <td>{i.is_godparent ? '💜' : ''}</td>
+                            <td className="guests__msg">{i.rsvp_message || '—'}</td>
+                            <td className="guests__when">{fmtDate(i.submitted_at)}</td>
+                            <td className="guests__actions">
+                              <RowActions
+                                items={[
+                                  {
+                                    icon: '✏️',
+                                    label: 'Edit RSVP',
+                                    onClick: () => setEditingRsvp(i)
+                                  }
+                                ]}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -409,6 +441,17 @@ export default function GuestList() {
           </>
         )}
       </main>
+
+      {editingRsvp && (
+        <EditRsvpModal
+          row={editingRsvp}
+          onClose={() => setEditingRsvp(null)}
+          onSaved={() => {
+            setEditingRsvp(null);
+            refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -914,6 +957,182 @@ function InvitationManager({ invitations, onChanged }) {
         />
       )}
     </section>
+  );
+}
+
+// Admin-side RSVP editor — covers attending/declined, seats, kids,
+// godparent flag, and the message. Saves via updateRsvpAsAdmin which
+// keys on invitation_id.
+function EditRsvpModal({ row, onClose, onSaved }) {
+  const [attending, setAttending] = useState(row.status === 'attending');
+  const [seats, setSeats] = useState(row.rsvp_seats ?? row.seats ?? 1);
+  const [bringingKids, setBringingKids] = useState(!!row.rsvp_bringing_kids);
+  const [kidsCount, setKidsCount] = useState(row.rsvp_kids_count || 1);
+  const [isGodparent, setIsGodparent] = useState(!!row.is_godparent);
+  const [message, setMessage] = useState(row.rsvp_message || '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !submitting) onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, submitting]);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+    const res = await updateRsvpAsAdmin({
+      invitationId: row.id,
+      updates: {
+        attending,
+        seats: attending ? Math.max(1, Number(seats) || 1) : 0,
+        bringingKids: attending && bringingKids,
+        kidsCount: attending && bringingKids ? Math.max(1, Number(kidsCount) || 1) : 0,
+        isGodparent,
+        message: message.trim()
+      }
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      setError(res.reason);
+      return;
+    }
+    onSaved?.();
+  };
+
+  return (
+    <div
+      className="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Edit RSVP for ${row.name}`}
+      onClick={() => !submitting && onClose()}
+    >
+      <div className="modal__inner" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="modal__close"
+          onClick={onClose}
+          aria-label="Close"
+          disabled={submitting}
+        >
+          ×
+        </button>
+
+        <p className="card__eyebrow">Edit RSVP</p>
+        <h3 className="modal__title">For {row.name}</h3>
+        {row.rsvp_email && (
+          <p className="modal__sub">{row.rsvp_email}</p>
+        )}
+
+        <form className="form" onSubmit={onSubmit}>
+          <fieldset className="form__field form__field--inline">
+            <legend>Attending?</legend>
+            <label className={`pill ${attending ? 'pill--on' : ''}`}>
+              <input
+                type="radio"
+                checked={attending}
+                onChange={() => setAttending(true)}
+              />
+              <span>Yes</span>
+            </label>
+            <label className={`pill ${!attending ? 'pill--on' : ''}`}>
+              <input
+                type="radio"
+                checked={!attending}
+                onChange={() => setAttending(false)}
+              />
+              <span>Declined</span>
+            </label>
+          </fieldset>
+
+          {attending && (
+            <>
+              <label className="form__field">
+                <span>Seats</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={seats}
+                  onChange={(e) => setSeats(Number(e.target.value))}
+                />
+              </label>
+
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={bringingKids}
+                  onChange={(e) => setBringingKids(e.target.checked)}
+                />
+                <span className="switch__track" aria-hidden="true">
+                  <span className="switch__thumb" />
+                </span>
+                <span className="switch__label">Bringing little ones</span>
+              </label>
+
+              {bringingKids && (
+                <label className="form__field">
+                  <span>How many kids?</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={kidsCount}
+                    onChange={(e) => setKidsCount(Number(e.target.value))}
+                  />
+                </label>
+              )}
+            </>
+          )}
+
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={isGodparent}
+              onChange={(e) => setIsGodparent(e.target.checked)}
+            />
+            <span className="switch__track" aria-hidden="true">
+              <span className="switch__thumb" />
+            </span>
+            <span className="switch__label">Mark as godparent</span>
+          </label>
+
+          <label className="form__field">
+            <span>Message for Avery</span>
+            <textarea
+              rows="3"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+          </label>
+
+          {error && (
+            <div className="form__error" role="alert">
+              {error}
+            </div>
+          )}
+
+          <div className="modal__actions">
+            <button type="submit" className="btn btn--primary" disabled={submitting}>
+              {submitting ? 'Saving…' : 'Save changes'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
