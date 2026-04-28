@@ -9,6 +9,7 @@ import {
   fetchRsvpByInvitation
 } from '../utils/rsvpDb.js';
 import { isValidEmail } from '../utils/validators.js';
+import InvitationCardModal from './InvitationCardModal.jsx';
 
 const initialState = {
   email: '',
@@ -31,6 +32,7 @@ export default function RsvpForm({ mode = 'guest' }) {
   const [submitted, setSubmitted] = useState(null);
   const [checking, setChecking] = useState(true);
   const [emailError, setEmailError] = useState('');
+  const [showCard, setShowCard] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -214,12 +216,32 @@ export default function RsvpForm({ mode = 'guest' }) {
             </p>
           )}
 
+          {submitted.attending && (
+            <p className="rsvp__locked-cta">
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => setShowCard(true)}
+              >
+                ✨ &nbsp; Get my invitation card
+              </button>
+            </p>
+          )}
+
           <p className="rsvp__locked-footer">
             Your RSVP has been recorded. If something needs to change, please reply to your
             confirmation email and we will update it on your behalf.
           </p>
 
         </div>
+
+        {showCard && (
+          <InvitationCardModal
+            user={user}
+            rsvp={submitted}
+            onClose={() => setShowCard(false)}
+          />
+        )}
       </section>
     );
   }

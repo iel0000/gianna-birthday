@@ -1569,6 +1569,37 @@
   line-height: 1.5;
 }
 
+.rsvp__locked-cta {
+  margin: 22px auto 8px;
+  text-align: center;
+}
+
+/* ---------- Invitation-card preview modal ---------- */
+.card-modal {
+  max-width: 540px;
+}
+
+.card-modal__preview {
+  margin: 14px auto 18px;
+  padding: 12px;
+  background: linear-gradient(135deg, #fff3f9, #f3e8ff);
+  border: 1.5px dashed rgba(160, 124, 255, 0.45);
+  border-radius: 18px;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-modal__preview img {
+  width: 100%;
+  height: auto;
+  max-width: 360px;
+  display: block;
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(217, 73, 148, 0.22);
+}
+
 /* ---------- RSVP ---------- */
 .rsvp__header {
   display: flex;
