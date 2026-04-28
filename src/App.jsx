@@ -7,6 +7,7 @@ import RsvpForm from './components/RsvpForm.jsx';
 import Sparkles from './components/Sparkles.jsx';
 import BackgroundImages, { BackgroundCredits } from './components/BackgroundImages.jsx';
 import GuestList from './components/GuestList.jsx';
+import CheckIn from './components/CheckIn.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import './App.css';
 
@@ -31,6 +32,9 @@ export default function App() {
 
   if (hash === '#guests' || hash === '#admin') {
     return <GuestList />;
+  }
+  if (hash === '#checkin' || hash === '#attendance') {
+    return <CheckIn />;
   }
 
   // Whether to show the godparent flow comes from the invitation in the

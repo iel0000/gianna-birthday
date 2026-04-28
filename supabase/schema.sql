@@ -86,6 +86,8 @@ create table if not exists public.rsvps (
   bringing_kids   boolean     not null default false,
   kids_count      integer     not null default 0 check (kids_count >= 0 and kids_count <= 12),
   is_godparent    boolean     not null default false,
+  checked_in      boolean     not null default false,
+  checked_in_at   timestamptz,
   message         text,
   submitted_at    timestamptz not null default now(),
   created_at      timestamptz not null default now(),
@@ -98,7 +100,9 @@ alter table public.rsvps
   add column if not exists invitation_id bigint references public.invitations(id) on delete set null,
   add column if not exists bringing_kids boolean not null default false,
   add column if not exists kids_count integer not null default 0,
-  add column if not exists is_godparent boolean not null default false;
+  add column if not exists is_godparent boolean not null default false,
+  add column if not exists checked_in boolean not null default false,
+  add column if not exists checked_in_at timestamptz;
 
 alter table public.rsvps alter column email drop not null;
 

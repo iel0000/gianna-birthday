@@ -99,6 +99,31 @@ export async function fetchRsvpByInvitation(invitationId) {
   };
 }
 
+// Toggle a guest's check-in state at the event door, keyed by invitation_id.
+// Sets checked_in_at to now when checking in, clears it when un-checking.
+export async function setRsvpCheckIn({ invitationId, checkedIn }) {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'Supabase is not configured.' };
+  }
+  if (!invitationId) {
+    return { ok: false, reason: 'Missing invitation id.' };
+  }
+
+  const { error } = await supabase
+    .from('rsvps')
+    .update({
+      checked_in: !!checkedIn,
+      checked_in_at: checkedIn ? new Date().toISOString() : null
+    })
+    .eq('invitation_id', invitationId);
+
+  if (error) {
+    console.error('[RSVP db] check-in update failed', error);
+    return { ok: false, reason: error.message };
+  }
+  return { ok: true };
+}
+
 // Admin-side delete of an existing RSVP row by invitation_id. The
 // invitation row is left intact, so the guest can re-RSVP if they want
 // (the invitation reverts to "pending" status in the admin view).
@@ -326,7 +351,9 @@ export async function fetchAllInvitationsWithStatus() {
       .order('created_at', { ascending: false }),
     supabase
       .from('rsvps')
-      .select('invitation_id, email, attending, seats, bringing_kids, kids_count, message, submitted_at, is_godparent')
+      .select(
+        'invitation_id, email, attending, seats, bringing_kids, kids_count, message, submitted_at, is_godparent, checked_in, checked_in_at'
+      )
   ]);
 
   if (invRes.error) {
@@ -350,6 +377,8 @@ export async function fetchAllInvitationsWithStatus() {
       rsvp_bringing_kids: rsvp?.bringing_kids || false,
       rsvp_kids_count: rsvp?.kids_count || 0,
       rsvp_message: rsvp?.message || '',
+      checked_in: !!rsvp?.checked_in,
+      checked_in_at: rsvp?.checked_in_at || null,
       submitted_at: rsvp?.submitted_at || null
     };
   });

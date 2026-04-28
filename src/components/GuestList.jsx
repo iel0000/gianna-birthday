@@ -270,6 +270,10 @@ export default function GuestList() {
           <p className="guests__signed-in">
             Signed in as <strong>{session.user?.email}</strong>
             {' · '}
+            <a href="#checkin" className="link-button">
+              attendance
+            </a>
+            {' · '}
             <button type="button" className="link-button" onClick={handleSignOut}>
               sign out
             </button>
