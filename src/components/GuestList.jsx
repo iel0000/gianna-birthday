@@ -1335,16 +1335,22 @@ async function generateQrWithLogo(url, logoSrc) {
     const logoSize = Math.round(size * 0.22); // 22% of the QR keeps it readable
     const cx = size / 2;
     const cy = size / 2;
-    const half = logoSize / 2;
-    const pad = 8;
+    const r = logoSize / 2;
+    const padR = r + 8;
 
-    // Solid white square pad behind the logo so the surrounding QR
-    // modules stay readable and the photo doesn't blend into the dots.
+    // White circular pad so the QR modules around the logo stay readable.
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(cx - half - pad, cy - half - pad, logoSize + pad * 2, logoSize + pad * 2);
+    ctx.beginPath();
+    ctx.arc(cx, cy, padR, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Draw the logo as a plain square — no clipping, no border.
-    ctx.drawImage(logo, cx - half, cy - half, logoSize, logoSize);
+    // Clip the logo to a circle and draw — no border ring on top.
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(logo, cx - r, cy - r, logoSize, logoSize);
+    ctx.restore();
   }
 
   return canvas.toDataURL('image/png');
