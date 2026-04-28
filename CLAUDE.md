@@ -162,6 +162,8 @@ These each cost real iteration time. Don't repeat them.
 - **`to anon` vs `to public`.** Some Supabase projects route browser-key requests through a role that doesn't match the literal `anon` policy. `to public` always matches.
 - **When all else fails, disable RLS.** This is a small private invitation site, not a SaaS. The anon key is already public.
 - **Whitespace in secrets.** GitHub secrets pasted with a trailing newline produce "recipients address is corrupted" from EmailJS. Always `.trim()` env values before use.
+- **Defend against empty `error.message`.** Some Supabase / Postgres errors come through with a blank `message` field; build the user-facing reason from `error.message → details → hint → "Postgres <code>"` so a "Database note: undefined" doesn't end up in the UI.
+- **Wrap upserts in try/catch.** Network failures throw rather than returning `{ error }` — without a catch they reach the React error boundary as an unhandled rejection. Always wrap and surface the captured error.
 
 ### EmailJS
 
@@ -187,6 +189,14 @@ These each cost real iteration time. Don't repeat them.
 - **Local cache + remote source of truth.** `RsvpForm` reads localStorage first (instant render) then Supabase (covers the cross-device case). The localStorage write happens before the Supabase write so the UI lock is always immediate.
 - **Effects should be cancellable.** Every `useEffect` that fetches uses a `cancelled` flag on cleanup, so a second invitation arriving doesn't race the first.
 - **AuthContext reads URL params on mount.** Strips them after consuming via `history.replaceState`. Don't leave `?invite=<guid>` in the URL — it'd persist in browser history.
+- **Look up by the most universal key first.** `RsvpForm` checks `fetchRsvpByInvitation(invitation.id)` before falling back to `fetchRsvpFromSupabase(email)`. Email is optional now, so an email-only lookup leaves cross-browser / private-tab guests stuck on the empty form. The invitation guid in the URL is always present — let it drive the lookup.
+- **Audit error fallbacks when removing a code path.** A "Database note: unknown error" lingered in the UI after the godparent-table mirror write was removed because the `godparentResult?.reason || 'unknown error'` fallback still fired with `godparentResult` undefined. When you delete a Promise.all branch, also delete every reference in the result handling — including the literal-string fallbacks.
+
+### UI / UX
+
+- **Replace `window.confirm` and `window.alert` with a themed dialog.** The native ones break the visual flow on a designed page. The site has a `ConfirmProvider` at the root and a `useConfirm()` hook that returns Promise-returning `confirm()` and `alert()`. Use `const ok = await confirm({ title, message, confirmLabel, danger });` instead. The component handles Enter/Escape/backdrop, focuses the primary button, and exposes a `danger` variant with a hot-pink confirm button.
+- **Form errors belong inline near the field.** Setting validation errors on a global "note" state that only renders after submit means the user never sees the error (the form has been replaced by the locked summary by then). Bad pattern that hid email-validation errors for a while.
+- **Diagnostic UI noise should retire after stabilization.** "Saved to the guest list ✓" / "A confirmation has fluttered into your inbox" / "Database note: …" were necessary during integration; once everything works, the locked summary card itself is the success signal. Keep the failure paths logging to `console.warn` — that's enough for the host to diagnose anything that goes wrong without cluttering the guest's view.
 
 ## Build & run
 
