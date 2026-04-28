@@ -20,6 +20,7 @@ import {
   onAdminAuthChange
 } from '../utils/adminAuth.js';
 import { isSupabaseConfigured } from '../utils/supabaseClient.js';
+import { useConfirm } from './ConfirmDialog.jsx';
 
 // Universal invitation URL — godparent vs regular is determined entirely
 // by the invitation row in the database, not the URL. Same shape for everyone.
@@ -91,6 +92,7 @@ const fmtDate = (iso) => {
 };
 
 export default function GuestList() {
+  const { confirm, alert } = useConfirm();
   const [session, setSession] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [invitations, setInvitations] = useState([]);
@@ -208,13 +210,21 @@ export default function GuestList() {
   };
 
   const handleDeleteRsvp = async (invitation) => {
-    const confirmed = window.confirm(
-      `Delete the RSVP from ${invitation.name}? The invitation stays in place — they can still RSVP again from their link.`
-    );
+    const confirmed = await confirm({
+      title: `Delete ${invitation.name}'s RSVP?`,
+      message:
+        'The invitation row stays in place — they can still RSVP again from their link if they like.',
+      confirmLabel: 'Delete RSVP',
+      danger: true
+    });
     if (!confirmed) return;
     const res = await deleteRsvpAsAdmin(invitation.id);
     if (!res.ok) {
-      window.alert(`Could not delete: ${res.reason}`);
+      await alert({
+        title: 'Could not delete',
+        message: res.reason,
+        danger: true
+      });
       return;
     }
     refresh();
@@ -591,6 +601,7 @@ function Stat({ label, value, accent }) {
 }
 
 function InvitationManager({ invitations, onChanged }) {
+  const { confirm, alert } = useConfirm();
   const [name, setName] = useState('');
   const [seats, setSeats] = useState(1);
   const [isGodparent, setIsGodparent] = useState(false);
@@ -641,10 +652,21 @@ function InvitationManager({ invitations, onChanged }) {
   };
 
   const onDelete = async (inv) => {
-    if (!window.confirm(`Delete the invitation for ${inv.name}? This can't be undone.`)) return;
+    const confirmed = await confirm({
+      title: `Delete the invitation for ${inv.name}?`,
+      message:
+        "This can't be undone. The guest's invitation link will stop working immediately.",
+      confirmLabel: 'Delete invitation',
+      danger: true
+    });
+    if (!confirmed) return;
     const res = await deleteInvitation(inv.guid);
     if (!res.ok) {
-      window.alert(`Could not delete: ${res.reason}`);
+      await alert({
+        title: 'Could not delete',
+        message: res.reason,
+        danger: true
+      });
       return;
     }
     onChanged?.();
