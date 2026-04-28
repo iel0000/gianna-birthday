@@ -22,8 +22,9 @@ const initialState = {
 
 // `mode` controls the wording + side effects:
 //   "guest"     — standard RSVP (default)
-//   "godparent" — same RSVP fields, but also marks the row as a godparent
-//                 and inserts into the godparents table.
+//   "godparent" — same RSVP fields, but persists is_godparent=true on the
+//                 rsvps row so the admin tally counts this guest as one
+//                 of Avery's godparents.
 export default function RsvpForm({ mode = 'guest' }) {
   const isGodparent = mode === 'godparent';
   const { user } = useAuth();
