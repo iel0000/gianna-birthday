@@ -63,6 +63,42 @@ export async function persistRsvpToSupabase({ user, rsvp }) {
   return { ok: true };
 }
 
+// Look up a guest's existing RSVP by invitation id. This is the cross-
+// browser / private-tab path: a returning visitor with a fresh local
+// cache (or none) can still see their locked summary because the GUID
+// in the URL is enough to find the row.
+export async function fetchRsvpByInvitation(invitationId) {
+  if (!isSupabaseConfigured()) return null;
+  if (!invitationId) return null;
+
+  const { data, error } = await supabase
+    .from('rsvps')
+    .select(
+      'email, name, attending, seats, message, submitted_at, reserved_seats, bringing_kids, kids_count, is_godparent'
+    )
+    .eq('invitation_id', invitationId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[RSVP db] fetch by invitation failed', error);
+    return null;
+  }
+  if (!data) return null;
+
+  return {
+    email: data.email,
+    name: data.name,
+    attending: data.attending,
+    seats: data.seats,
+    bringingKids: !!data.bringing_kids,
+    kidsCount: data.kids_count || 0,
+    isGodparent: !!data.is_godparent,
+    message: data.message || '',
+    submittedAt: data.submitted_at,
+    reservedSeats: data.reserved_seats
+  };
+}
+
 // Admin-side delete of an existing RSVP row by invitation_id. The
 // invitation row is left intact, so the guest can re-RSVP if they want
 // (the invitation reverts to "pending" status in the admin view).

@@ -5,7 +5,8 @@ import { sendRsvpEmails } from '../utils/emailService.js';
 import { isEmailConfigured } from '../utils/emailConfig.js';
 import {
   persistRsvpToSupabase,
-  fetchRsvpFromSupabase
+  fetchRsvpFromSupabase,
+  fetchRsvpByInvitation
 } from '../utils/rsvpDb.js';
 import { isValidEmail } from '../utils/validators.js';
 
@@ -28,8 +29,6 @@ export default function RsvpForm({ mode = 'guest' }) {
   const [form, setForm] = useState(initialState);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(null);
-  const [emailNote, setEmailNote] = useState('');
-  const [dbNote, setDbNote] = useState('');
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -51,7 +50,15 @@ export default function RsvpForm({ mode = 'guest' }) {
         if (!cancelled) setChecking(false);
         return;
       }
-      const remote = user.email ? await fetchRsvpFromSupabase(user.email) : null;
+      // Invitation guid first — works in private tabs / new browsers where
+      // the local cache is empty and the guest never typed an email.
+      let remote = null;
+      if (user.invitation?.id) {
+        remote = await fetchRsvpByInvitation(user.invitation.id);
+      }
+      if (!remote && user.email) {
+        remote = await fetchRsvpFromSupabase(user.email);
+      }
       if (cancelled) return;
       if (remote) {
         saveRsvp(user, {
@@ -90,14 +97,16 @@ export default function RsvpForm({ mode = 'guest' }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const [emailError, setEmailError] = useState('');
+
   const onSubmit = async (e) => {
     e.preventDefault();
-    setEmailNote('');
+    setEmailError('');
 
     // Validate email only if one was provided — it's optional now.
     const typedEmail = (form.email || '').trim();
     if (typedEmail && !isValidEmail(typedEmail)) {
-      setEmailNote('That email looks a bit off — please double-check it or leave it blank.');
+      setEmailError('That email looks a bit off — please double-check it or leave it blank.');
       return;
     }
 
@@ -125,44 +134,24 @@ export default function RsvpForm({ mode = 'guest' }) {
     const saved = saveRsvp(userForSubmit, rsvp);
     setSubmitted(saved);
 
-    // Email only fires when the guest provided one. The godparent flag
-    // is captured directly on the rsvps row via persistRsvpToSupabase, so
-    // there's no separate godparents-table write any more. Promise.all is
-    // wrapped in try/catch so an unhandled rejection never disappears
-    // silently — the locked summary still renders, with a real reason
-    // surfaced in dbNote.
-    let emailResult = { sent: false, reason: 'unknown' };
-    let dbResult = { ok: false, reason: 'unknown' };
+    // Fire-and-(quietly)-forget the email + database writes. Failures still
+    // log to the browser console for diagnosis, but don't surface in the UI
+    // any more — the locked summary itself is the success signal.
     try {
-      [emailResult, dbResult] = await Promise.all([
+      const [emailResult, dbResult] = await Promise.all([
         typedEmail || userForSubmit.email
           ? sendRsvpEmails({ user: userForSubmit, rsvp: saved })
           : Promise.resolve({ sent: false, reason: 'no email provided' }),
         persistRsvpToSupabase({ user: userForSubmit, rsvp: saved })
       ]);
+      if (!emailResult.sent && emailResult.reason !== 'no email provided') {
+        console.warn('[RSVP email] not sent:', emailResult.reason);
+      }
+      if (!dbResult.ok) {
+        console.warn('[RSVP db] persist failed:', dbResult.reason, dbResult);
+      }
     } catch (err) {
       console.error('[RSVP] post-submit task threw', err);
-      const reason = err?.message || err?.toString?.() || 'unknown error';
-      dbResult = { ok: false, reason };
-      emailResult = { sent: false, reason };
-    }
-
-    if (emailResult.sent) {
-      setEmailNote('A confirmation has fluttered into your inbox. ✨');
-    } else {
-      setEmailNote(`RSVP saved. Email note: ${emailResult.reason || 'no detail'}`);
-    }
-
-    if (dbResult.ok) {
-      setDbNote(
-        isGodparent
-          ? 'Saved to the guest list and the fairy godparents ring ✨'
-          : 'Saved to the guest list ✓'
-      );
-    } else {
-      const reason = dbResult.reason || 'no detail provided';
-      console.warn('[RSVP db] persist failed:', reason, dbResult);
-      setDbNote(`Database note: ${reason}`);
     }
 
     setSubmitting(false);
@@ -231,8 +220,6 @@ export default function RsvpForm({ mode = 'guest' }) {
             confirmation email and we will update it on your behalf.
           </p>
 
-          {emailNote && <p className="rsvp__note">{emailNote}</p>}
-          {dbNote && <p className="rsvp__note">{dbNote}</p>}
         </div>
       </section>
     );
@@ -264,13 +251,17 @@ export default function RsvpForm({ mode = 'guest' }) {
           <input
             type="email"
             value={form.email}
-            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+            onChange={(e) => {
+              setForm((prev) => ({ ...prev, email: e.target.value }));
+              if (emailError) setEmailError('');
+            }}
             placeholder="you@example.com"
             autoComplete="email"
           />
           <small className="form__hint">
             We'll send a confirmation if you add one — totally optional.
           </small>
+          {emailError && <div className="form__error" role="alert">{emailError}</div>}
         </label>
 
         <fieldset className="form__field form__field--inline">
