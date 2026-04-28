@@ -1,5 +1,3 @@
-import QRCode from 'qrcode';
-
 // Wait for the brand web fonts to be ready before painting the card —
 // otherwise the canvas falls back to a generic serif while the
 // Google-Font script is still loading.
@@ -28,23 +26,15 @@ function roundedRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function loadImage(src) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
-}
-
 // Renders the personalised invitation card onto an offscreen canvas
-// and returns it as a PNG data URL. Layout is portrait 800×1200 so it
-// looks like a printable ticket / pass.
-export async function generateInvitationCard({ user, rsvp, inviteUrl }) {
+// and returns it as a PNG data URL. Layout is portrait 800×950 — sized
+// just tall enough to fit header + name + seats + kids/godparent lines
+// + venue without leaving an empty slab at the bottom.
+export async function generateInvitationCard({ user, rsvp }) {
   await ensureFontsLoaded();
 
   const W = 800;
-  const H = 1200;
+  const H = 950;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -205,30 +195,6 @@ export async function generateInvitationCard({ user, rsvp, inviteUrl }) {
   ctx.fillStyle = '#6f4ed1';
   ctx.font = '400 13px "Quicksand", sans-serif';
   ctx.fillText('Mabalacat City, Pampanga', cx, cursorY);
-
-  // ── QR code at bottom (entry pass) ──
-  if (inviteUrl) {
-    const qrSize = 140;
-    const qrX = cx - qrSize / 2;
-    const qrY = cardY + cardH - qrSize - 80;
-
-    const qrCanvas = document.createElement('canvas');
-    try {
-      await QRCode.toCanvas(qrCanvas, inviteUrl, {
-        width: qrSize,
-        margin: 1,
-        errorCorrectionLevel: 'M',
-        color: { dark: '#3d2a73', light: '#ffffff' }
-      });
-      ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
-    } catch (err) {
-      console.warn('[invitation card] QR draw failed', err);
-    }
-
-    ctx.fillStyle = '#8a7aaa';
-    ctx.font = '500 12px "Quicksand", sans-serif';
-    ctx.fillText('Show this at the door', cx, qrY + qrSize + 24);
-  }
 
   return canvas.toDataURL('image/png');
 }

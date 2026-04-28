@@ -5,14 +5,10 @@ export default function InvitationCardModal({ user, rsvp, onClose }) {
   const [dataUrl, setDataUrl] = useState('');
   const [error, setError] = useState('');
 
-  const inviteUrl = user.invitation?.guid
-    ? `${window.location.origin}/?invite=${user.invitation.guid}`
-    : window.location.origin;
-
   useEffect(() => {
     let cancelled = false;
     setError('');
-    generateInvitationCard({ user, rsvp, inviteUrl })
+    generateInvitationCard({ user, rsvp })
       .then((d) => {
         if (!cancelled) setDataUrl(d);
       })
@@ -23,7 +19,7 @@ export default function InvitationCardModal({ user, rsvp, onClose }) {
     return () => {
       cancelled = true;
     };
-  }, [user, rsvp, inviteUrl]);
+  }, [user, rsvp]);
 
   useEffect(() => {
     const onKey = (e) => {
