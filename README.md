@@ -116,14 +116,18 @@ The app sends these variables to **both** templates:
 | Variable | Example |
 | --- | --- |
 | `to_name` / `to_email` | recipient name & email |
-| `guest_name` / `guest_email` | the RSVP submitter |
+| `guest_name` / `guest_email` | the RSVP submitter (email may be `—` since it's optional now) |
 | `attending` / `attending_raw` | "Yes — joining the celebration" / "yes" or "no" |
 | `seats` | number of seats (0 if not attending) |
+| `bringing_kids` / `kids_count` | "Yes" / "No"  ·  numeric count |
+| `kids_summary` | "Yes — 3 little ones" or "No" — ready to drop into prose |
+| `is_godparent` / `godparent_label` | "yes" / "no"  ·  "Yes — godparent invitation" / "No" |
+| `godparent_note` | full sentence for godparents, empty string for regular guests (drop directly into a `<p>` tag) |
 | `message` | message for Avery or `—` |
 | `submitted_at` | formatted timestamp |
 | `celebrant_name` | "Gianna Avery Magsino" |
 | `event_title` | "1st Birthday & Christening" |
-| `rsvp_link` | `https://yoursite/?rsvp=email#rsvp` — guests click this to auto-sign back in and view or update their RSVP |
+| `rsvp_link` | `https://yoursite/?invite=<guid>` — the guest's personalised invitation URL (falls back to legacy `?rsvp=email#rsvp` for old data) |
 
 ### EmailJS template settings (Settings tab, not Content)
 

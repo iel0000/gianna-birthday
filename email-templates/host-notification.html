@@ -11,7 +11,10 @@
 
   Variables expected (already sent by the app):
     to_name, guest_name, guest_email, attending, attending_raw, seats,
-    message, submitted_at, celebrant_name, event_title
+    bringing_kids, kids_count, kids_summary,
+    is_godparent, godparent_label, godparent_note,
+    message, submitted_at, celebrant_name, event_title,
+    rsvp_link   /?invite=<guid> deep link for cross-checking
 
   Email-client notes:
     • Tables for layout (Outlook desktop)
@@ -109,6 +112,14 @@
                   <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-weight:600;font-size:14px;">{{attending}}</td>
                 </tr>
                 <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Bringing kids</td>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-size:14px;">{{kids_summary}}</td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Godparent</td>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-size:14px;">{{godparent_label}}</td>
+                </tr>
+                <tr>
                   <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Message</td>
                   <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-style:italic;font-size:14px;line-height:1.5;">{{message}}</td>
                 </tr>
@@ -117,9 +128,15 @@
                   <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-size:14px;">{{submitted_at}}</td>
                 </tr>
                 <tr>
-                  <td style="padding:12px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Guest email</td>
+                  <td style="padding:12px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Guest email</td>
                   <td style="padding:12px 0;font-size:14px;">
                     <a href="mailto:{{guest_email}}" style="color:#d94994;text-decoration:none;">{{guest_email}}</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 0;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Invitation link</td>
+                  <td style="padding:12px 0;font-size:13px;">
+                    <a href="{{rsvp_link}}" style="color:#d94994;text-decoration:none;word-break:break-all;">{{rsvp_link}}</a>
                   </td>
                 </tr>
               </table>

@@ -10,9 +10,11 @@
     Reply To     : (your email, e.g. ariel.magsino@hivve.tech)
 
   Variables expected (already sent by the app):
-    to_name, guest_name, attending, attending_raw, seats,
+    to_name, guest_name, guest_email, attending, attending_raw, seats,
+    bringing_kids, kids_count, kids_summary,
+    is_godparent, godparent_label, godparent_note,
     message, submitted_at, celebrant_name, event_title,
-    rsvp_link  ← deep-link back to the site, auto-restores the guest's session
+    rsvp_link   /?invite=<guid> deep link back to the site
 
   Email-client notes:
     • Tables for layout (Outlook desktop)
@@ -92,7 +94,11 @@
             <td style="padding:18px 40px 0 40px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="padding:10px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;width:40%;vertical-align:top;">Your message</td>
+                  <td style="padding:10px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;width:40%;vertical-align:top;">Bringing kids</td>
+                  <td style="padding:10px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-size:14px;">{{kids_summary}}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;border-bottom:1px solid #f3e8ff;color:#6f4ed1;font-size:12px;letter-spacing:2px;text-transform:uppercase;vertical-align:top;">Your message</td>
                   <td style="padding:10px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-style:italic;font-size:14px;line-height:1.5;">{{message}}</td>
                 </tr>
                 <tr>
@@ -100,6 +106,11 @@
                   <td style="padding:10px 0;border-bottom:1px solid #f3e8ff;color:#3d2a73;font-size:14px;">{{submitted_at}}</td>
                 </tr>
               </table>
+
+              <!-- godparent_note is empty for regular guests, full sentence for godparents -->
+              <p style="margin:18px 0 0 0;text-align:center;color:#6f4ed1;font-size:14px;font-style:italic;line-height:1.5;">
+                {{godparent_note}}
+              </p>
             </td>
           </tr>
 
