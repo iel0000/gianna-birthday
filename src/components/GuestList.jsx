@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import QRCode from 'qrcode';
 import Sparkles from './Sparkles.jsx';
 import BackgroundImages from './BackgroundImages.jsx';
 import {
@@ -20,6 +19,7 @@ import {
   onAdminAuthChange
 } from '../utils/adminAuth.js';
 import { isSupabaseConfigured } from '../utils/supabaseClient.js';
+import { generateQrInvitationCard } from '../utils/qrInvitationCard.js';
 import { useConfirm } from './ConfirmDialog.jsx';
 
 // Universal invitation URL — godparent vs regular is determined entirely
@@ -947,7 +947,7 @@ function InvitationManager({ invitations, onChanged }) {
                         },
                         {
                           icon: '📱',
-                          label: 'QR code',
+                          label: 'Invitation card',
                           onClick: () => setQrInvitation(inv)
                         },
                         {
@@ -1302,64 +1302,6 @@ function EditInvitationModal({ invitation, onClose, onSaved }) {
   );
 }
 
-// Loads an image as a Promise<HTMLImageElement>. Resolves null on
-// failure (the QR is rendered without a logo overlay in that case).
-function loadImage(src) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
-}
-
-// Generates the QR onto an offscreen canvas, then overlays the hero
-// portrait clipped to a circle in the centre. Error correction H lets
-// the QR survive ~30% obstruction, so the centre logo doesn't break
-// scanning. If the logo fails to load, falls back to a plain QR.
-async function generateQrWithLogo(url, logoSrc) {
-  const size = 480;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-
-  await QRCode.toCanvas(canvas, url, {
-    width: size,
-    margin: 2,
-    errorCorrectionLevel: 'H',
-    color: {
-      dark: '#3d2a73',
-      light: '#ffffff'
-    }
-  });
-
-  const logo = logoSrc ? await loadImage(logoSrc) : null;
-  if (logo) {
-    const ctx = canvas.getContext('2d');
-    const logoSize = Math.round(size * 0.22); // 22% of the QR keeps it readable
-    const cx = size / 2;
-    const cy = size / 2;
-    const r = logoSize / 2;
-    const padR = r + 8;
-
-    // White circular pad so the QR modules around the logo stay readable.
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(cx, cy, padR, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Clip the logo to a circle and draw — no border ring on top.
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(logo, cx - r, cy - r, logoSize, logoSize);
-    ctx.restore();
-  }
-
-  return canvas.toDataURL('image/png');
-}
-
 function QrModal({ invitation, onClose }) {
   const [dataUrl, setDataUrl] = useState('');
   const url = buildInviteUrl(invitation.guid, invitation.is_godparent);
@@ -1367,17 +1309,17 @@ function QrModal({ invitation, onClose }) {
   useEffect(() => {
     let cancelled = false;
     const logoSrc = `${import.meta.env.BASE_URL}photos/gianna-hero.jpg`;
-    generateQrWithLogo(url, logoSrc)
+    generateQrInvitationCard({ invitation, url, logoSrc })
       .then((d) => {
         if (!cancelled) setDataUrl(d);
       })
       .catch((err) => {
-        console.error('[QR] generation failed', err);
+        console.error('[QR] card generation failed', err);
       });
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [invitation, url]);
 
   // Close on Escape
   useEffect(() => {
@@ -1404,7 +1346,7 @@ function QrModal({ invitation, onClose }) {
       className="modal"
       role="dialog"
       aria-modal="true"
-      aria-label={`QR code for ${invitation.name}`}
+      aria-label={`Invitation card for ${invitation.name}`}
       onClick={onClose}
     >
       <div className="modal__inner" onClick={(e) => e.stopPropagation()}>
@@ -1417,16 +1359,19 @@ function QrModal({ invitation, onClose }) {
           ×
         </button>
 
-        <p className="card__eyebrow">Invitation QR</p>
+        <p className="card__eyebrow">Invitation card</p>
         <h3 className="modal__title">For {invitation.name}</h3>
         <p className="modal__sub">
           {invitation.seats} {invitation.seats === 1 ? 'seat' : 'seats'} reserved
-          {invitation.is_godparent ? ' · Godparent' : ''}
+          {invitation.is_godparent ? ' · Godparent' : ''} · send this image to your guest
         </p>
 
         <div className="modal__qr">
           {dataUrl ? (
-            <img src={dataUrl} alt={`QR code linking to ${url}`} />
+            <img
+              src={dataUrl}
+              alt={`Invitation card for ${invitation.name} with a QR code linking to ${url}`}
+            />
           ) : (
             <p className="modal__loading">Drawing fairy dust…</p>
           )}

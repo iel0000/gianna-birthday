@@ -1,30 +1,4 @@
-// Wait for the brand web fonts to be ready before painting the card —
-// otherwise the canvas falls back to a generic serif while the
-// Google-Font script is still loading.
-async function ensureFontsLoaded() {
-  if (typeof document === 'undefined' || !document.fonts?.load) return;
-  await Promise.all([
-    document.fonts.load('400 120px "Great Vibes"'),
-    document.fonts.load('400 80px "Great Vibes"'),
-    document.fonts.load('italic 32px "Cormorant Garamond"'),
-    document.fonts.load('600 22px "Cormorant Garamond"'),
-    document.fonts.load('500 13px "Quicksand"')
-  ]).catch(() => {});
-}
-
-function roundedRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-  ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x, y + h, x, y + h - r, r);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
-  ctx.closePath();
-}
+import { ensureFontsLoaded, roundedRect } from './canvasCard.js';
 
 // Renders the personalised invitation card onto an offscreen canvas
 // and returns it as a PNG data URL. Layout is portrait 800×950 — sized
