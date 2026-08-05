@@ -270,7 +270,7 @@ export async function generateQrInvitationCard({ invitation, url, logoSrc }) {
   }
 
   // ── QR ──
-  drawCentered(ctx, 'S C A N   T O   O P E N   Y O U R   I N V I T A T I O N', cx, y + 8, {
+  drawCentered(ctx, 'S C A N   T O   O P E N   R S V P', cx, y + 8, {
     font: '600 12px "Quicksand", sans-serif',
     fill: PURPLE
   });
