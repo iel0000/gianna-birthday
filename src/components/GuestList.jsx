@@ -20,6 +20,7 @@ import {
 } from '../utils/adminAuth.js';
 import { isSupabaseConfigured } from '../utils/supabaseClient.js';
 import { generateQrInvitationCard } from '../utils/qrInvitationCard.js';
+import ModalPortal from './ModalPortal.jsx';
 import { useConfirm } from './ConfirmDialog.jsx';
 
 // Universal invitation URL — godparent vs regular is determined entirely
@@ -1019,14 +1020,6 @@ function EditRsvpModal({ row, onClose, onSaved }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape' && !submitting) onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, submitting]);
-
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -1051,134 +1044,120 @@ function EditRsvpModal({ row, onClose, onSaved }) {
   };
 
   return (
-    <div
-      className="modal"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Edit RSVP for ${row.name}`}
-      onClick={() => !submitting && onClose()}
+    <ModalPortal
+      label={`Edit RSVP for ${row.name}`}
+      onClose={onClose}
+      busy={submitting}
     >
-      <div className="modal__inner" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          className="modal__close"
-          onClick={onClose}
-          aria-label="Close"
-          disabled={submitting}
-        >
-          ×
-        </button>
+      <p className="card__eyebrow">Edit RSVP</p>
+      <h3 className="modal__title">For {row.name}</h3>
+      {row.rsvp_email && (
+        <p className="modal__sub">{row.rsvp_email}</p>
+      )}
 
-        <p className="card__eyebrow">Edit RSVP</p>
-        <h3 className="modal__title">For {row.name}</h3>
-        {row.rsvp_email && (
-          <p className="modal__sub">{row.rsvp_email}</p>
-        )}
+      <form className="form" onSubmit={onSubmit}>
+        <fieldset className="form__field form__field--inline">
+          <legend>Attending?</legend>
+          <label className={`pill ${attending ? 'pill--on' : ''}`}>
+            <input
+              type="radio"
+              checked={attending}
+              onChange={() => setAttending(true)}
+            />
+            <span>Yes</span>
+          </label>
+          <label className={`pill ${!attending ? 'pill--on' : ''}`}>
+            <input
+              type="radio"
+              checked={!attending}
+              onChange={() => setAttending(false)}
+            />
+            <span>Declined</span>
+          </label>
+        </fieldset>
 
-        <form className="form" onSubmit={onSubmit}>
-          <fieldset className="form__field form__field--inline">
-            <legend>Attending?</legend>
-            <label className={`pill ${attending ? 'pill--on' : ''}`}>
+        {attending && (
+          <>
+            <label className="form__field">
+              <span>Seats</span>
               <input
-                type="radio"
-                checked={attending}
-                onChange={() => setAttending(true)}
+                type="number"
+                min="1"
+                max="12"
+                value={seats}
+                onChange={(e) => setSeats(Number(e.target.value))}
               />
-              <span>Yes</span>
             </label>
-            <label className={`pill ${!attending ? 'pill--on' : ''}`}>
-              <input
-                type="radio"
-                checked={!attending}
-                onChange={() => setAttending(false)}
-              />
-              <span>Declined</span>
-            </label>
-          </fieldset>
 
-          {attending && (
-            <>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={bringingKids}
+                onChange={(e) => setBringingKids(e.target.checked)}
+              />
+              <span className="switch__track" aria-hidden="true">
+                <span className="switch__thumb" />
+              </span>
+              <span className="switch__label">Bringing little ones</span>
+            </label>
+
+            {bringingKids && (
               <label className="form__field">
-                <span>Seats</span>
+                <span>How many kids?</span>
                 <input
                   type="number"
                   min="1"
                   max="12"
-                  value={seats}
-                  onChange={(e) => setSeats(Number(e.target.value))}
+                  value={kidsCount}
+                  onChange={(e) => setKidsCount(Number(e.target.value))}
                 />
               </label>
+            )}
+          </>
+        )}
 
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  checked={bringingKids}
-                  onChange={(e) => setBringingKids(e.target.checked)}
-                />
-                <span className="switch__track" aria-hidden="true">
-                  <span className="switch__thumb" />
-                </span>
-                <span className="switch__label">Bringing little ones</span>
-              </label>
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={isGodparent}
+            onChange={(e) => setIsGodparent(e.target.checked)}
+          />
+          <span className="switch__track" aria-hidden="true">
+            <span className="switch__thumb" />
+          </span>
+          <span className="switch__label">Mark as godparent</span>
+        </label>
 
-              {bringingKids && (
-                <label className="form__field">
-                  <span>How many kids?</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="12"
-                    value={kidsCount}
-                    onChange={(e) => setKidsCount(Number(e.target.value))}
-                  />
-                </label>
-              )}
-            </>
-          )}
+        <label className="form__field">
+          <span>Message for Avery</span>
+          <textarea
+            rows="3"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+        </label>
 
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={isGodparent}
-              onChange={(e) => setIsGodparent(e.target.checked)}
-            />
-            <span className="switch__track" aria-hidden="true">
-              <span className="switch__thumb" />
-            </span>
-            <span className="switch__label">Mark as godparent</span>
-          </label>
-
-          <label className="form__field">
-            <span>Message for Avery</span>
-            <textarea
-              rows="3"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-          </label>
-
-          {error && (
-            <div className="form__error" role="alert">
-              {error}
-            </div>
-          )}
-
-          <div className="modal__actions">
-            <button type="submit" className="btn btn--primary" disabled={submitting}>
-              {submitting ? 'Saving…' : 'Save changes'}
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={onClose}
-              disabled={submitting}
-            >
-              Cancel
-            </button>
+        {error && (
+          <div className="form__error" role="alert">
+            {error}
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+
+        <div className="modal__actions">
+          <button type="submit" className="btn btn--primary" disabled={submitting}>
+            {submitting ? 'Saving…' : 'Save changes'}
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </ModalPortal>
   );
 }
 
@@ -1188,15 +1167,6 @@ function EditInvitationModal({ invitation, onClose, onSaved }) {
   const [isGodparent, setIsGodparent] = useState(!!invitation.is_godparent);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  // Close on Escape
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape' && !submitting) onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, submitting]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -1221,84 +1191,70 @@ function EditInvitationModal({ invitation, onClose, onSaved }) {
   };
 
   return (
-    <div
-      className="modal"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Edit invitation for ${invitation.name}`}
-      onClick={() => !submitting && onClose()}
+    <ModalPortal
+      label={`Edit invitation for ${invitation.name}`}
+      onClose={onClose}
+      busy={submitting}
     >
-      <div className="modal__inner" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          className="modal__close"
-          onClick={onClose}
-          aria-label="Close"
-          disabled={submitting}
-        >
-          ×
-        </button>
+      <p className="card__eyebrow">Edit invitation</p>
+      <h3 className="modal__title">For {invitation.name}</h3>
 
-        <p className="card__eyebrow">Edit invitation</p>
-        <h3 className="modal__title">For {invitation.name}</h3>
+      <form className="form" onSubmit={onSubmit}>
+        <label className="form__field">
+          <span>Guest name</span>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+            required
+          />
+        </label>
 
-        <form className="form" onSubmit={onSubmit}>
-          <label className="form__field">
-            <span>Guest name</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-              required
-            />
-          </label>
+        <label className="form__field">
+          <span>Seats</span>
+          <input
+            type="number"
+            min="1"
+            max="12"
+            value={seats}
+            onChange={(e) => setSeats(Number(e.target.value))}
+          />
+        </label>
 
-          <label className="form__field">
-            <span>Seats</span>
-            <input
-              type="number"
-              min="1"
-              max="12"
-              value={seats}
-              onChange={(e) => setSeats(Number(e.target.value))}
-            />
-          </label>
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={isGodparent}
+            onChange={(e) => setIsGodparent(e.target.checked)}
+          />
+          <span className="switch__track" aria-hidden="true">
+            <span className="switch__thumb" />
+          </span>
+          <span className="switch__label">Mark as godparent invitation</span>
+        </label>
 
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={isGodparent}
-              onChange={(e) => setIsGodparent(e.target.checked)}
-            />
-            <span className="switch__track" aria-hidden="true">
-              <span className="switch__thumb" />
-            </span>
-            <span className="switch__label">Mark as godparent invitation</span>
-          </label>
-
-          {error && (
-            <div className="form__error" role="alert">
-              {error}
-            </div>
-          )}
-
-          <div className="modal__actions">
-            <button type="submit" className="btn btn--primary" disabled={submitting}>
-              {submitting ? 'Saving…' : 'Save changes'}
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={onClose}
-              disabled={submitting}
-            >
-              Cancel
-            </button>
+        {error && (
+          <div className="form__error" role="alert">
+            {error}
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+
+        <div className="modal__actions">
+          <button type="submit" className="btn btn--primary" disabled={submitting}>
+            {submitting ? 'Saving…' : 'Save changes'}
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </ModalPortal>
   );
 }
 
@@ -1321,15 +1277,6 @@ function QrModal({ invitation, onClose }) {
     };
   }, [invitation, url]);
 
-  // Close on Escape
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const download = () => {
     if (!dataUrl) return;
     const a = document.createElement('a');
@@ -1342,58 +1289,44 @@ function QrModal({ invitation, onClose }) {
   };
 
   return (
-    <div
-      className="modal"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Invitation card for ${invitation.name}`}
-      onClick={onClose}
+    <ModalPortal
+      label={`Invitation card for ${invitation.name}`}
+      onClose={onClose}
     >
-      <div className="modal__inner" onClick={(e) => e.stopPropagation()}>
+      <p className="card__eyebrow">Invitation card</p>
+      <h3 className="modal__title">For {invitation.name}</h3>
+      <p className="modal__sub">
+        {invitation.seats} {invitation.seats === 1 ? 'seat' : 'seats'} reserved
+        {invitation.is_godparent ? ' · Godparent' : ''} · send this image to your guest
+      </p>
+
+      <div className="modal__qr">
+        {dataUrl ? (
+          <img
+            src={dataUrl}
+            alt={`Invitation card for ${invitation.name} with a QR code linking to ${url}`}
+          />
+        ) : (
+          <p className="modal__loading">Drawing fairy dust…</p>
+        )}
+      </div>
+
+      <p className="modal__url" title={url}>{url}</p>
+
+      <div className="modal__actions">
         <button
           type="button"
-          className="modal__close"
-          onClick={onClose}
-          aria-label="Close"
+          className="btn btn--primary"
+          onClick={download}
+          disabled={!dataUrl}
         >
-          ×
+          ⬇︎ &nbsp; Download PNG
         </button>
-
-        <p className="card__eyebrow">Invitation card</p>
-        <h3 className="modal__title">For {invitation.name}</h3>
-        <p className="modal__sub">
-          {invitation.seats} {invitation.seats === 1 ? 'seat' : 'seats'} reserved
-          {invitation.is_godparent ? ' · Godparent' : ''} · send this image to your guest
-        </p>
-
-        <div className="modal__qr">
-          {dataUrl ? (
-            <img
-              src={dataUrl}
-              alt={`Invitation card for ${invitation.name} with a QR code linking to ${url}`}
-            />
-          ) : (
-            <p className="modal__loading">Drawing fairy dust…</p>
-          )}
-        </div>
-
-        <p className="modal__url" title={url}>{url}</p>
-
-        <div className="modal__actions">
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={download}
-            disabled={!dataUrl}
-          >
-            ⬇︎ &nbsp; Download PNG
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Close
-          </button>
-        </div>
+        <button type="button" className="btn btn--ghost" onClick={onClose}>
+          Close
+        </button>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

@@ -42,11 +42,15 @@ gianna-birthday/
 │   │   ├── PhotoFrame.jsx    # circle/rounded photo with auto-fallback placeholder
 │   │   ├── Sparkles.jsx      # animated background sparkles
 │   │   ├── Login.jsx         # "Open your invitation link" message (no manual login)
+│   │   ├── ModalPortal.jsx   # shared modal shell — portals to <body> (see CSS quirks)
 │   │   ├── RsvpForm.jsx      # the unified RSVP form (guest or godparent mode)
 │   │   └── GuestList.jsx     # admin page (auth-gated) — invitations + RSVPs + CSV
 │   ├── context/
 │   │   └── AuthContext.jsx   # reads ?invite=<guid> on mount, seeds session from invitation
 │   ├── utils/
+│   │   ├── canvasCard.js     # shared canvas primitives for the PNG card generators
+│   │   ├── invitationCard.js # guest's downloadable invitation pass (canvas → PNG)
+│   │   ├── qrInvitationCard.js # host's invitation card with the QR embedded
 │   │   ├── supabaseClient.js # single createClient() instance (anon key)
 │   │   ├── adminAuth.js      # Supabase Auth wrapper for the host login
 │   │   ├── rsvpDb.js         # ALL DB ops: invitations CRUD + rsvps upsert/lookup
@@ -181,6 +185,7 @@ These each cost real iteration time. Don't repeat them.
 ### Locked CSS quirks
 
 - **`overflow-x: auto` implicitly clips overflow-y.** A dropdown menu inside a horizontally-scrollable table-wrapper gets clipped. Render via React Portal at `document.body` and position with `getBoundingClientRect`.
+- **`backdrop-filter` breaks `position: fixed` children — every modal must be portalled.** `.card` carries `backdrop-filter: blur(14px)`, which makes each card *both* the containing block for its fixed-position descendants *and* its own stacking context. A `.modal` rendered inside a card therefore sizes `inset: 0` against the card instead of the viewport, and its `z-index: 100` is scoped to that card — so any *later* sibling card paints on top of it. This is what made the invitation-card modal appear behind the RSVPs table. Never render a `.modal` inline; use `<ModalPortal>` (`src/components/ModalPortal.jsx`), which portals to `<body>` and owns the backdrop, close button, Escape handling, and the `busy` (non-dismissable while saving) state. Bumping `z-index` does not fix this — a child cannot escape its ancestor's stacking context.
 - **Cursive scripts need padding.** `Great Vibes` has tall ascenders/descenders. `line-height: 1` clips the G/g — needs `line-height: 1.15` plus a touch of vertical padding.
 - **`mix-blend-mode: multiply` is a hack** to remove a white background. Real transparency (PNG alpha) is always cleaner. The Python script in `scripts/remove-bg.py` does the threshold/feather pass.
 

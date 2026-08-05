@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { generateInvitationCard } from '../utils/invitationCard.js';
+import ModalPortal from './ModalPortal.jsx';
 
 export default function InvitationCardModal({ user, rsvp, onClose }) {
   const [dataUrl, setDataUrl] = useState('');
@@ -21,14 +22,6 @@ export default function InvitationCardModal({ user, rsvp, onClose }) {
     };
   }, [user, rsvp]);
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const download = () => {
     if (!dataUrl) return;
     const a = document.createElement('a');
@@ -43,57 +36,41 @@ export default function InvitationCardModal({ user, rsvp, onClose }) {
   };
 
   return (
-    <div
-      className="modal"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Your invitation card"
-      onClick={onClose}
+    <ModalPortal
+      label="Your invitation card"
+      innerClassName="card-modal"
+      onClose={onClose}
     >
-      <div
-        className="modal__inner card-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <p className="card__eyebrow">Your invitation pass</p>
+      <h3 className="modal__title">Welcome to the fairy ring ✨</h3>
+      <p className="modal__sub">
+        Save this card and present it at the door — it has your seat count,
+        your name, and a QR for the host to scan.
+      </p>
+
+      <div className="card-modal__preview">
+        {error ? (
+          <p className="modal__loading">{error}</p>
+        ) : dataUrl ? (
+          <img src={dataUrl} alt="Your personalised invitation card" />
+        ) : (
+          <p className="modal__loading">Drawing fairy dust…</p>
+        )}
+      </div>
+
+      <div className="modal__actions">
         <button
           type="button"
-          className="modal__close"
-          onClick={onClose}
-          aria-label="Close"
+          className="btn btn--primary"
+          onClick={download}
+          disabled={!dataUrl}
         >
-          ×
+          ⬇︎ &nbsp; Download my pass
         </button>
-
-        <p className="card__eyebrow">Your invitation pass</p>
-        <h3 className="modal__title">Welcome to the fairy ring ✨</h3>
-        <p className="modal__sub">
-          Save this card and present it at the door — it has your seat count,
-          your name, and a QR for the host to scan.
-        </p>
-
-        <div className="card-modal__preview">
-          {error ? (
-            <p className="modal__loading">{error}</p>
-          ) : dataUrl ? (
-            <img src={dataUrl} alt="Your personalised invitation card" />
-          ) : (
-            <p className="modal__loading">Drawing fairy dust…</p>
-          )}
-        </div>
-
-        <div className="modal__actions">
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={download}
-            disabled={!dataUrl}
-          >
-            ⬇︎ &nbsp; Download my pass
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Close
-          </button>
-        </div>
+        <button type="button" className="btn btn--ghost" onClick={onClose}>
+          Close
+        </button>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
