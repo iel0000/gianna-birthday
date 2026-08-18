@@ -43,6 +43,7 @@ gianna-birthday/
 │   │   ├── Sparkles.jsx      # animated background sparkles
 │   │   ├── Login.jsx         # "Open your invitation link" message (no manual login)
 │   │   ├── ModalPortal.jsx   # shared modal shell — portals to <body> (see CSS quirks)
+│   │   ├── Pagination.jsx    # usePagination hook + page controls for the admin tables
 │   │   ├── RsvpForm.jsx      # the unified RSVP form (guest or godparent mode)
 │   │   └── GuestList.jsx     # admin page (auth-gated) — invitations + RSVPs + CSV
 │   ├── context/
@@ -194,6 +195,7 @@ These each cost real iteration time. Don't repeat them.
 - **Local cache + remote source of truth.** `RsvpForm` reads localStorage first (instant render) then Supabase (covers the cross-device case). The localStorage write happens before the Supabase write so the UI lock is always immediate.
 - **Effects should be cancellable.** Every `useEffect` that fetches uses a `cancelled` flag on cleanup, so a second invitation arriving doesn't race the first.
 - **AuthContext reads URL params on mount.** Strips them after consuming via `history.replaceState`. Don't leave `?invite=<guid>` in the URL — it'd persist in browser history.
+- **Derive paging state, do not sync it.** `usePagination` computes the current page during render (`clamp(cursor.page, 1, pageCount)`) instead of correcting an out-of-range page in a `useEffect`. A filter that shrinks the list therefore clamps in the same render — no flash of an empty page, no extra render. Same rule for anything derived from a list whose length can change under it.
 - **Look up by the most universal key first.** `RsvpForm` checks `fetchRsvpByInvitation(invitation.id)` before falling back to `fetchRsvpFromSupabase(email)`. Email is optional now, so an email-only lookup leaves cross-browser / private-tab guests stuck on the empty form. The invitation guid in the URL is always present — let it drive the lookup.
 - **Audit error fallbacks when removing a code path.** A "Database note: unknown error" lingered in the UI after the godparent-table mirror write was removed because the `godparentResult?.reason || 'unknown error'` fallback still fired with `godparentResult` undefined. When you delete a Promise.all branch, also delete every reference in the result handling — including the literal-string fallbacks.
 

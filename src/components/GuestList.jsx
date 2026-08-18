@@ -21,6 +21,7 @@ import {
 import { isSupabaseConfigured } from '../utils/supabaseClient.js';
 import { generateQrInvitationCard } from '../utils/qrInvitationCard.js';
 import ModalPortal from './ModalPortal.jsx';
+import Pagination, { usePagination } from './Pagination.jsx';
 import { useConfirm } from './ConfirmDialog.jsx';
 
 // Universal invitation URL — godparent vs regular is determined entirely
@@ -60,6 +61,9 @@ function downloadCsv(filename, content) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+const RSVP_PAGE_SIZE = 20;
+const INVITATION_PAGE_SIZE = 20;
 
 // Each row here is an invitation row joined with its rsvp data.
 // `inv.seats` = seats reserved by the admin, `inv.rsvp_seats` = seats
@@ -171,6 +175,11 @@ export default function GuestList() {
       return true;
     });
   }, [respondedInvitations, filters]);
+
+  const rsvpPages = usePagination(filteredRsvps, {
+    pageSize: RSVP_PAGE_SIZE,
+    resetKey: JSON.stringify(filters)
+  });
 
   const filtersActive =
     filters.search ||
@@ -418,7 +427,7 @@ export default function GuestList() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredRsvps.map((i) => {
+                      {rsvpPages.pageItems.map((i) => {
                         const attending = i.status === 'attending';
                         return (
                           <tr
@@ -471,6 +480,16 @@ export default function GuestList() {
                   </table>
                 </div>
               )}
+
+              <Pagination
+                page={rsvpPages.page}
+                pageCount={rsvpPages.pageCount}
+                from={rsvpPages.from}
+                to={rsvpPages.to}
+                total={rsvpPages.total}
+                label="RSVP pages"
+                onPage={rsvpPages.setPage}
+              />
             </section>
 
           </>
@@ -620,6 +639,10 @@ function InvitationManager({ invitations, onChanged }) {
   const fileInputRef = useRef(null);
 
   const totalInvitations = invitations.length;
+  const invitationPages = usePagination(invitations, {
+    pageSize: INVITATION_PAGE_SIZE
+  });
+
   const totalInvitationSeats = useMemo(
     () => invitations.reduce((sum, inv) => sum + (inv.seats || 0), 0),
     [invitations]
@@ -917,7 +940,7 @@ function InvitationManager({ invitations, onChanged }) {
               </tr>
             </thead>
             <tbody>
-              {invitations.map((inv) => (
+              {invitationPages.pageItems.map((inv) => (
                 <tr key={inv.guid}>
                   <td>{inv.name}</td>
                   <td className="guests__num">{inv.seats}</td>
@@ -985,6 +1008,16 @@ function InvitationManager({ invitations, onChanged }) {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={invitationPages.page}
+        pageCount={invitationPages.pageCount}
+        from={invitationPages.from}
+        to={invitationPages.to}
+        total={invitationPages.total}
+        label="Invitation pages"
+        onPage={invitationPages.setPage}
+      />
 
       {qrInvitation && (
         <QrModal
