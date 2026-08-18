@@ -113,6 +113,12 @@ export default function GuestList() {
   });
   const [editingRsvp, setEditingRsvp] = useState(null);
 
+  // Supabase re-emits auth events (TOKEN_REFRESHED / SIGNED_IN) whenever the
+  // tab regains focus, each with a new session object. Keying the data fetch
+  // on the user id instead of that object keeps those no-op events from
+  // re-running it — a fresh object identity is not a new login.
+  const sessionUserId = session?.user?.id ?? null;
+
   useEffect(() => {
     document.title = "Guest list — Avery's celebration";
 
@@ -134,7 +140,7 @@ export default function GuestList() {
   }, []);
 
   useEffect(() => {
-    if (!session) {
+    if (!sessionUserId) {
       setInvitations([]);
       setDataState({ ok: false, reason: '' });
       return;
@@ -152,7 +158,7 @@ export default function GuestList() {
     return () => {
       cancelled = true;
     };
-  }, [session, refreshTick]);
+  }, [sessionUserId, refreshTick]);
 
   // RSVPs view = invitations that have actually responded (status !== 'pending').
   // Source is the same invitations array used by the manager — no separate fetch.
@@ -270,7 +276,7 @@ export default function GuestList() {
       <BackgroundImages />
       <Sparkles />
 
-      <main className="page__main guests">
+      <main className="page__main guests" aria-busy={loading}>
         <header className="guests__header">
           <p className="card__eyebrow">Host view</p>
           <h1 className="guests__title">Guest list</h1>
@@ -294,7 +300,7 @@ export default function GuestList() {
           </p>
         </header>
 
-        {loading ? (
+        {loading && invitations.length === 0 ? (
           <section className="card card--loading">Loading the fairy ring…</section>
         ) : !dataState.ok ? (
           <section className="card">
