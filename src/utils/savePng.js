@@ -2,13 +2,25 @@
 // fails silently on phones: iOS Safari ignores the `download` attribute on
 // a `data:` URL, so tapping "Download my pass" did nothing at all.
 //
-// Order of preference:
-//   1. Web Share API with the file attached — on iOS and Android this opens
-//      the native sheet ("Save Image", "Send to Messenger"), which is what a
-//      guest on a phone actually wants.
-//   2. A blob: URL with `download` — works on desktop and on Android
-//      Chrome, unlike a data: URL of the same image.
+// Which path is right depends on the device, not on what the browser
+// happens to support:
+//   • Phones and tablets — the Web Share API, whose sheet offers "Save
+//     Image" and sending straight to Messenger. On iOS it is the only thing
+//     that works at all, since Safari ignores `download` on a data: URL.
+//   • Desktop — a plain download. Windows Chrome and Edge also implement
+//     the Share API, but a host clicking "Download PNG" wants a file on
+//     disk, not a share sheet asking which app to send it to.
 // Callers get the method back so the UI can say what happened.
+
+// Share only where a share sheet is the natural way to keep a file. A
+// desktop with a touchscreen still reports a fine primary pointer, so this
+// stays false there — which is the behaviour we want.
+function prefersShareSheet() {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+  if (navigator.userAgentData?.mobile) return true;
+  const coarse = window.matchMedia?.('(pointer: coarse)')?.matches;
+  return !!coarse && (navigator.maxTouchPoints || 0) > 0;
+}
 
 export function dataUrlToBlob(dataUrl) {
   const [meta, base64] = String(dataUrl).split(',');
@@ -46,7 +58,7 @@ export async function savePng({ dataUrl, filename, shareTitle }) {
     file = null; // Very old Safari has no File constructor.
   }
 
-  if (file && navigator.canShare?.({ files: [file] })) {
+  if (file && prefersShareSheet() && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: shareTitle || filename });
       return { ok: true, method: 'share' };

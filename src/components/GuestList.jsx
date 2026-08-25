@@ -24,6 +24,7 @@ import {
   CARD_VARIANTS,
   generateHostInvitationCard
 } from '../utils/hostInvitationCard.js';
+import GenericInvitationModal from './GenericInvitationModal.jsx';
 import GodparentProposalModal from './GodparentProposalModal.jsx';
 import ModalPortal from './ModalPortal.jsx';
 import { savePng } from '../utils/savePng.js';
@@ -678,6 +679,7 @@ function InvitationManager({ invitations, onChanged, onPatch }) {
   const [copiedGuid, setCopiedGuid] = useState(null);
   const [qrInvitation, setQrInvitation] = useState(null);
   const [showProposal, setShowProposal] = useState(false);
+  const [showGeneric, setShowGeneric] = useState(false);
   const [editingInvitation, setEditingInvitation] = useState(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
@@ -977,6 +979,14 @@ function InvitationManager({ invitations, onChanged, onPatch }) {
           >
             🖼️ &nbsp; Export {selectedInvitations.length || ''} card
             {selectedInvitations.length === 1 ? '' : 's'}
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost guests__export"
+            onClick={() => setShowGeneric(true)}
+            title="A card with no name or seat count — safe to post anywhere"
+          >
+            ✨ &nbsp; Invitation card
           </button>
           <button
             type="button"
@@ -1329,6 +1339,10 @@ function InvitationManager({ invitations, onChanged, onPatch }) {
           invitation={qrInvitation}
           onClose={() => setQrInvitation(null)}
         />
+      )}
+
+      {showGeneric && (
+        <GenericInvitationModal onClose={() => setShowGeneric(false)} />
       )}
 
       {showProposal && (
