@@ -5,7 +5,7 @@ const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 // Every invitation read returns the same shape — keep the list in one place
 // so a new column reaches all of them.
 const INVITATION_COLUMNS =
-  'id, guid, name, seats, is_godparent, created_at';
+  'id, guid, name, seats, is_godparent, invitation_sent, invitation_sent_at, created_at';
 
 // Push an RSVP into Supabase as the canonical record. Local storage still
 // drives the UI's "already-submitted" lock; this is a write-only mirror so
@@ -267,6 +267,32 @@ export async function updateInvitation({ guid, name, seats, isGodparent }) {
     return { ok: false, reason: error.message };
   }
   return { ok: true, invitation: data };
+}
+
+// Host bookkeeping: flag whether the invitation has actually been sent.
+// Stamps invitation_sent_at when ticked, clears it when un-ticked.
+export async function setInvitationSent({ guid, sent }) {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'Supabase is not configured.' };
+  }
+  const cleanGuid = String(guid || '').trim().toLowerCase();
+  if (!cleanGuid) {
+    return { ok: false, reason: 'Missing invitation id.' };
+  }
+
+  const { error } = await supabase
+    .from('invitations')
+    .update({
+      invitation_sent: !!sent,
+      invitation_sent_at: sent ? new Date().toISOString() : null
+    })
+    .eq('guid', cleanGuid);
+
+  if (error) {
+    console.error('[Invitation db] sent flag update failed', error);
+    return { ok: false, reason: error.message };
+  }
+  return { ok: true };
 }
 
 // Bulk-insert invitations from a CSV import. Each row is validated; any

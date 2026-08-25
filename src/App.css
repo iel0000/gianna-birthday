@@ -1283,6 +1283,41 @@
   text-align: right;
 }
 
+/* Host bookkeeping toggle in the invitations table. */
+.sent-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.5px dashed rgba(160, 124, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--purple-700);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: all 150ms ease;
+}
+
+.sent-toggle:hover:not(:disabled) {
+  border-color: var(--purple-500);
+  background: var(--purple-100);
+}
+
+.sent-toggle--on {
+  border-style: solid;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--pink-500), var(--purple-500));
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(217, 73, 148, 0.26);
+}
+
+.sent-toggle:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .guests__select-col {
   width: 40px;
   text-align: center;

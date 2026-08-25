@@ -53,15 +53,25 @@ $$;
 -- Admin-created. The guid is the URL token shared with each guest.
 -- is_godparent on the invitation flips the page into the godparent flow
 -- automatically when the URL is opened (no separate URL needed).
+-- invitation_sent is the host's own bookkeeping: ticked by hand once the
+-- link or card has actually been handed over. Nothing on the guest side
+-- reads it.
 create table if not exists public.invitations (
-  id            bigint generated always as identity primary key,
-  guid          uuid        not null default gen_random_uuid() unique,
-  name          text        not null,
-  seats         integer     not null default 1 check (seats >= 1 and seats <= 12),
-  is_godparent  boolean     not null default false,
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
+  id                 bigint generated always as identity primary key,
+  guid               uuid        not null default gen_random_uuid() unique,
+  name               text        not null,
+  seats              integer     not null default 1 check (seats >= 1 and seats <= 12),
+  is_godparent       boolean     not null default false,
+  invitation_sent    boolean     not null default false,
+  invitation_sent_at timestamptz,
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
 );
+
+-- ─── Migrations for existing projects (idempotent) ───
+alter table public.invitations
+  add column if not exists invitation_sent boolean not null default false,
+  add column if not exists invitation_sent_at timestamptz;
 
 drop trigger if exists invitations_touch_updated_at on public.invitations;
 create trigger invitations_touch_updated_at

@@ -9,7 +9,8 @@ import {
   bulkCreateInvitations,
   fetchAllInvitationsWithStatus,
   updateRsvpAsAdmin,
-  deleteRsvpAsAdmin
+  deleteRsvpAsAdmin,
+  setInvitationSent
 } from '../utils/rsvpDb.js';
 import { parseCsv, buildHeaderIndex } from '../utils/csv.js';
 import {
@@ -116,6 +117,13 @@ export default function GuestList() {
   const [loading, setLoading] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const refresh = () => setRefreshTick((t) => t + 1);
+
+  // Applies a change to one row in place. Cheaper than a full refetch for
+  // single-field toggles, and keeps `invitations` the only source of truth.
+  const patchInvitation = (guid, patch) =>
+    setInvitations((prev) =>
+      prev.map((inv) => (inv.guid === guid ? { ...inv, ...patch } : inv))
+    );
   const [filters, setFilters] = useState({
     search: '',
     status: 'all',
@@ -336,6 +344,7 @@ export default function GuestList() {
             <InvitationManager
               invitations={invitations}
               onChanged={refresh}
+              onPatch={patchInvitation}
             />
 
 
@@ -658,7 +667,7 @@ function Stat({ label, value, accent }) {
   );
 }
 
-function InvitationManager({ invitations, onChanged }) {
+function InvitationManager({ invitations, onChanged, onPatch }) {
   const { confirm, alert } = useConfirm();
   const [name, setName] = useState('');
   const [seats, setSeats] = useState(1);
@@ -674,9 +683,11 @@ function InvitationManager({ invitations, onChanged }) {
   const [filters, setFilters] = useState({
     search: '',
     status: 'all',
-    godparent: 'all'
+    godparent: 'all',
+    sent: 'all'
   });
   const [selected, setSelected] = useState(() => new Set());
+  const [savingSent, setSavingSent] = useState(null);
   const [bulkExport, setBulkExport] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -689,6 +700,8 @@ function InvitationManager({ invitations, onChanged }) {
       if (filters.status !== 'all' && inv.status !== filters.status) return false;
       if (filters.godparent === 'yes' && !inv.is_godparent) return false;
       if (filters.godparent === 'no' && inv.is_godparent) return false;
+      if (filters.sent === 'yes' && !inv.invitation_sent) return false;
+      if (filters.sent === 'no' && inv.invitation_sent) return false;
       return true;
     });
   }, [invitations, filters]);
@@ -730,11 +743,38 @@ function InvitationManager({ invitations, onChanged }) {
 
   const clearSelection = () => setSelected(new Set());
 
+  // Optimistic flip; on failure we put the old value back and say so.
+  const toggleSent = async (invitation) => {
+    if (savingSent) return;
+    const next = !invitation.invitation_sent;
+    setSavingSent(invitation.guid);
+    onPatch?.(invitation.guid, {
+      invitation_sent: next,
+      invitation_sent_at: next ? new Date().toISOString() : null
+    });
+
+    const res = await setInvitationSent({ guid: invitation.guid, sent: next });
+    setSavingSent(null);
+    if (!res.ok) {
+      onPatch?.(invitation.guid, {
+        invitation_sent: invitation.invitation_sent,
+        invitation_sent_at: invitation.invitation_sent_at
+      });
+      alert({
+        title: 'Could not save that',
+        message: res.reason || 'The invitation-sent flag did not stick.'
+      });
+    }
+  };
+
   const filtersActive =
-    filters.search || filters.status !== 'all' || filters.godparent !== 'all';
+    filters.search ||
+    filters.status !== 'all' ||
+    filters.godparent !== 'all' ||
+    filters.sent !== 'all';
 
   const clearFilters = () =>
-    setFilters({ search: '', status: 'all', godparent: 'all' });
+    setFilters({ search: '', status: 'all', godparent: 'all', sent: 'all' });
 
   const invitationPages = usePagination(filteredInvitations, {
     pageSize: INVITATION_PAGE_SIZE,
@@ -892,6 +932,8 @@ function InvitationManager({ invitations, onChanged }) {
       { label: 'Name', get: (i) => i.name },
       { label: 'Seats', get: (i) => i.seats },
       { label: 'Godparent', get: (i) => (i.is_godparent ? 'Yes' : 'No') },
+      { label: 'Invitation Sent', get: (i) => (i.invitation_sent ? 'Yes' : 'No') },
+      { label: 'Sent At', get: (i) => i.invitation_sent_at || '' },
       { label: 'Status', get: (i) => i.status },
       { label: 'RSVP Seats', get: (i) => i.rsvp_seats ?? '' },
       { label: 'Bringing Kids', get: (i) => (i.rsvp_bringing_kids ? 'Yes' : 'No') },
@@ -1100,6 +1142,26 @@ function InvitationManager({ invitations, onChanged }) {
             >
               <span>Non-godparents</span>
             </button>
+            <button
+              type="button"
+              className={`pill ${filters.sent === 'yes' ? 'pill--on' : ''}`}
+              onClick={() =>
+                setFilters((f) => ({ ...f, sent: f.sent === 'yes' ? 'all' : 'yes' }))
+              }
+              aria-pressed={filters.sent === 'yes'}
+            >
+              <span>✉️ Sent</span>
+            </button>
+            <button
+              type="button"
+              className={`pill ${filters.sent === 'no' ? 'pill--on' : ''}`}
+              onClick={() =>
+                setFilters((f) => ({ ...f, sent: f.sent === 'no' ? 'all' : 'no' }))
+              }
+              aria-pressed={filters.sent === 'no'}
+            >
+              <span>Not sent</span>
+            </button>
           </div>
           {filtersActive && (
             <button type="button" className="link-button" onClick={clearFilters}>
@@ -1148,6 +1210,7 @@ function InvitationManager({ invitations, onChanged }) {
                 <th>Name</th>
                 <th>Seats</th>
                 <th>Type</th>
+                <th>Sent</th>
                 <th>Status</th>
                 <th>Submitted</th>
                 <th className="guests__actions-col">Actions</th>
@@ -1175,6 +1238,22 @@ function InvitationManager({ invitations, onChanged }) {
                     ) : (
                       <span className="guests__pill guests__pill--no">Guest</span>
                     )}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className={`sent-toggle ${inv.invitation_sent ? 'sent-toggle--on' : ''}`}
+                      onClick={() => toggleSent(inv)}
+                      disabled={savingSent === inv.guid}
+                      aria-pressed={!!inv.invitation_sent}
+                      title={
+                        inv.invitation_sent
+                          ? `Sent${inv.invitation_sent_at ? ` · ${fmtDate(inv.invitation_sent_at)}` : ''} — click to undo`
+                          : 'Mark this invitation as sent'
+                      }
+                    >
+                      {inv.invitation_sent ? '✓ Sent' : 'Mark sent'}
+                    </button>
                   </td>
                   <td>
                     <span className={`guests__pill guests__pill--${inv.status}`}>
