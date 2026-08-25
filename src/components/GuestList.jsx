@@ -66,6 +66,13 @@ function downloadCsv(filename, content) {
   URL.revokeObjectURL(url);
 }
 
+// Download name for a generated invitation card PNG.
+const cardFileName = (invitation, variant) => {
+  const safeName = (invitation.name || '').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+  const base = safeName.replace(/^-|-$/g, '') || invitation.guid.slice(0, 8);
+  return `invitation-${base}${CARD_VARIANTS[variant].file}.png`;
+};
+
 const RSVP_PAGE_SIZE = 20;
 const INVITATION_PAGE_SIZE = 20;
 
@@ -112,7 +119,7 @@ export default function GuestList() {
   const [filters, setFilters] = useState({
     search: '',
     status: 'all',
-    godparent: false,
+    godparent: 'all',
     kids: false
   });
   const [editingRsvp, setEditingRsvp] = useState(null);
@@ -180,7 +187,8 @@ export default function GuestList() {
       }
       if (filters.status === 'attending' && i.status !== 'attending') return false;
       if (filters.status === 'declined' && i.status !== 'declined') return false;
-      if (filters.godparent && !i.is_godparent) return false;
+      if (filters.godparent === 'yes' && !i.is_godparent) return false;
+      if (filters.godparent === 'no' && i.is_godparent) return false;
       if (filters.kids && !i.rsvp_bringing_kids) return false;
       return true;
     });
@@ -194,11 +202,11 @@ export default function GuestList() {
   const filtersActive =
     filters.search ||
     filters.status !== 'all' ||
-    filters.godparent ||
+    filters.godparent !== 'all' ||
     filters.kids;
 
   const clearFilters = () =>
-    setFilters({ search: '', status: 'all', godparent: false, kids: false });
+    setFilters({ search: '', status: 'all', godparent: 'all', kids: false });
 
   const totals = useMemo(() => {
     const responded = invitations.filter((i) => i.status !== 'pending');
@@ -383,13 +391,29 @@ export default function GuestList() {
                 <div className="guests__filter-pills" role="group" aria-label="Tags">
                   <button
                     type="button"
-                    className={`pill ${filters.godparent ? 'pill--on' : ''}`}
+                    className={`pill ${filters.godparent === 'yes' ? 'pill--on' : ''}`}
                     onClick={() =>
-                      setFilters((f) => ({ ...f, godparent: !f.godparent }))
+                      setFilters((f) => ({
+                        ...f,
+                        godparent: f.godparent === 'yes' ? 'all' : 'yes'
+                      }))
                     }
-                    aria-pressed={filters.godparent}
+                    aria-pressed={filters.godparent === 'yes'}
                   >
                     <span>💜 Godparents</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill ${filters.godparent === 'no' ? 'pill--on' : ''}`}
+                    onClick={() =>
+                      setFilters((f) => ({
+                        ...f,
+                        godparent: f.godparent === 'no' ? 'all' : 'no'
+                      }))
+                    }
+                    aria-pressed={filters.godparent === 'no'}
+                  >
+                    <span>Non-godparents</span>
                   </button>
                   <button
                     type="button"
@@ -650,8 +674,10 @@ function InvitationManager({ invitations, onChanged }) {
   const [filters, setFilters] = useState({
     search: '',
     status: 'all',
-    godparent: false
+    godparent: 'all'
   });
+  const [selected, setSelected] = useState(() => new Set());
+  const [bulkExport, setBulkExport] = useState(null);
   const fileInputRef = useRef(null);
 
   const totalInvitations = invitations.length;
@@ -661,16 +687,54 @@ function InvitationManager({ invitations, onChanged }) {
     return invitations.filter((inv) => {
       if (q && !(inv.name || '').toLowerCase().includes(q)) return false;
       if (filters.status !== 'all' && inv.status !== filters.status) return false;
-      if (filters.godparent && !inv.is_godparent) return false;
+      if (filters.godparent === 'yes' && !inv.is_godparent) return false;
+      if (filters.godparent === 'no' && inv.is_godparent) return false;
       return true;
     });
   }, [invitations, filters]);
 
+  // Selection is keyed on guid so it survives a refetch. Rows hidden by a
+  // filter stay selected — the count and the export both say how many.
+  const selectedInvitations = useMemo(
+    () => invitations.filter((inv) => selected.has(inv.guid)),
+    [invitations, selected]
+  );
+
+  const allFilteredSelected =
+    filteredInvitations.length > 0 &&
+    filteredInvitations.every((inv) => selected.has(inv.guid));
+
+  const toggleRow = (guid) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(guid)) {
+        next.delete(guid);
+      } else {
+        next.add(guid);
+      }
+      return next;
+    });
+
+  const toggleAllFiltered = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      filteredInvitations.forEach((inv) => {
+        if (allFilteredSelected) {
+          next.delete(inv.guid);
+        } else {
+          next.add(inv.guid);
+        }
+      });
+      return next;
+    });
+
+  const clearSelection = () => setSelected(new Set());
+
   const filtersActive =
-    filters.search || filters.status !== 'all' || filters.godparent;
+    filters.search || filters.status !== 'all' || filters.godparent !== 'all';
 
   const clearFilters = () =>
-    setFilters({ search: '', status: 'all', godparent: false });
+    setFilters({ search: '', status: 'all', godparent: 'all' });
 
   const invitationPages = usePagination(filteredInvitations, {
     pageSize: INVITATION_PAGE_SIZE,
@@ -704,7 +768,7 @@ function InvitationManager({ invitations, onChanged }) {
   };
 
   const onCopy = async (inv) => {
-    const url = buildInviteUrl(inv.guid, inv.is_godparent);
+    const url = buildInviteUrl(inv.guid);
     try {
       await navigator.clipboard.writeText(url);
       setCopiedGuid(inv.guid);
@@ -834,7 +898,7 @@ function InvitationManager({ invitations, onChanged }) {
       { label: 'Kids Count', get: (i) => i.rsvp_kids_count ?? 0 },
       { label: 'Message', get: (i) => i.rsvp_message || '' },
       { label: 'Submitted At', get: (i) => i.submitted_at || '' },
-      { label: 'Invite URL', get: (i) => buildInviteUrl(i.guid, i.is_godparent) }
+      { label: 'Invite URL', get: (i) => buildInviteUrl(i.guid) }
     ];
     downloadCsv(`avery-invitations-${stamp}.csv`, toCsv(filteredInvitations, cols));
   };
@@ -861,6 +925,16 @@ function InvitationManager({ invitations, onChanged }) {
             onChange={onFileChange}
             style={{ display: 'none' }}
           />
+          <button
+            type="button"
+            className="btn btn--ghost guests__export"
+            onClick={() => setBulkExport(selectedInvitations)}
+            disabled={selectedInvitations.length === 0}
+            title="Generate an invitation card PNG for each selected guest"
+          >
+            🖼️ &nbsp; Export {selectedInvitations.length || ''} card
+            {selectedInvitations.length === 1 ? '' : 's'}
+          </button>
           <button
             type="button"
             className="btn btn--ghost guests__export"
@@ -1002,11 +1076,29 @@ function InvitationManager({ invitations, onChanged }) {
           <div className="guests__filter-pills" role="group" aria-label="Tags">
             <button
               type="button"
-              className={`pill ${filters.godparent ? 'pill--on' : ''}`}
-              onClick={() => setFilters((f) => ({ ...f, godparent: !f.godparent }))}
-              aria-pressed={filters.godparent}
+              className={`pill ${filters.godparent === 'yes' ? 'pill--on' : ''}`}
+              onClick={() =>
+                setFilters((f) => ({
+                  ...f,
+                  godparent: f.godparent === 'yes' ? 'all' : 'yes'
+                }))
+              }
+              aria-pressed={filters.godparent === 'yes'}
             >
               <span>💜 Godparents</span>
+            </button>
+            <button
+              type="button"
+              className={`pill ${filters.godparent === 'no' ? 'pill--on' : ''}`}
+              onClick={() =>
+                setFilters((f) => ({
+                  ...f,
+                  godparent: f.godparent === 'no' ? 'all' : 'no'
+                }))
+              }
+              aria-pressed={filters.godparent === 'no'}
+            >
+              <span>Non-godparents</span>
             </button>
           </div>
           {filtersActive && (
@@ -1015,6 +1107,16 @@ function InvitationManager({ invitations, onChanged }) {
             </button>
           )}
         </div>
+      )}
+
+      {selectedInvitations.length > 0 && (
+        <p className="guests__selection" role="status">
+          <strong>{selectedInvitations.length}</strong>{' '}
+          {selectedInvitations.length === 1 ? 'invitation' : 'invitations'} selected{' '}
+          <button type="button" className="link-button" onClick={clearSelection}>
+            clear
+          </button>
+        </p>
       )}
 
       {invitations.length === 0 ? (
@@ -1031,6 +1133,18 @@ function InvitationManager({ invitations, onChanged }) {
           <table className="guests__table">
             <thead>
               <tr>
+                <th className="guests__select-col">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleAllFiltered}
+                    aria-label={
+                      allFilteredSelected
+                        ? 'Deselect all shown invitations'
+                        : 'Select all shown invitations'
+                    }
+                  />
+                </th>
                 <th>Name</th>
                 <th>Seats</th>
                 <th>Type</th>
@@ -1041,7 +1155,18 @@ function InvitationManager({ invitations, onChanged }) {
             </thead>
             <tbody>
               {invitationPages.pageItems.map((inv) => (
-                <tr key={inv.guid}>
+                <tr
+                  key={inv.guid}
+                  className={selected.has(inv.guid) ? 'guests__row--selected' : ''}
+                >
+                  <td className="guests__select-col">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(inv.guid)}
+                      onChange={() => toggleRow(inv.guid)}
+                      aria-label={`Select ${inv.name}`}
+                    />
+                  </td>
                   <td>{inv.name}</td>
                   <td className="guests__num">{inv.seats}</td>
                   <td>
@@ -1128,6 +1253,13 @@ function InvitationManager({ invitations, onChanged }) {
 
       {showProposal && (
         <GodparentProposalModal onClose={() => setShowProposal(false)} />
+      )}
+
+      {bulkExport && (
+        <BulkCardExportModal
+          invitations={bulkExport}
+          onClose={() => setBulkExport(null)}
+        />
       )}
 
       {editingInvitation && (
@@ -1371,7 +1503,6 @@ function EditInvitationModal({ invitation, onClose, onSaved }) {
           <span className="switch__label">Mark as godparent invitation</span>
         </label>
 
-
         {error && (
           <div className="form__error" role="alert">
             {error}
@@ -1406,11 +1537,129 @@ const VARIANT_HINTS = {
     'No QR, no link, nothing to tap. Their seats are reserved and the card says so — for a guest who will not RSVP online at all.'
 };
 
+// Bulk card export. Cards are drawn and downloaded one at a time — the
+// browser asks once for permission to save multiple files, then the rest
+// follow. No zip, so nothing to unpack before forwarding a guest's card.
+function BulkCardExportModal({ invitations, onClose }) {
+  const [variant, setVariant] = useState('qr');
+  const [progress, setProgress] = useState(null);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(0);
+
+  const running = progress !== null;
+
+  const runExport = async () => {
+    setError('');
+    setDone(0);
+    const portraitSrc = `${import.meta.env.BASE_URL}photos/gianna-hero.jpg`;
+
+    for (let i = 0; i < invitations.length; i += 1) {
+      const invitation = invitations[i];
+      setProgress(i + 1);
+      try {
+        const dataUrl = await generateHostInvitationCard({
+          invitation,
+          url: buildInviteUrl(invitation.guid),
+          portraitSrc,
+          variant
+        });
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = cardFileName(invitation, variant);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setDone(i + 1);
+      } catch (err) {
+        console.error('[invitation card] bulk export failed', invitation.name, err);
+        setError(`Stopped at ${invitation.name}: ${err?.message || 'could not draw the card'}`);
+        setProgress(null);
+        return;
+      }
+      // Breathe between saves so the browser doesn't drop queued downloads.
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+
+    setProgress(null);
+  };
+
+  return (
+    <ModalPortal
+      label="Export invitation cards"
+      innerClassName="card-modal"
+      onClose={onClose}
+      busy={running}
+    >
+      <p className="card__eyebrow">Bulk export</p>
+      <h3 className="modal__title">
+        {invitations.length} invitation {invitations.length === 1 ? 'card' : 'cards'}
+      </h3>
+      <p className="modal__sub">
+        One PNG per guest, named after them. Your browser may ask once to allow
+        multiple downloads — say yes and the rest will follow.
+      </p>
+
+      <div className="modal__choices" role="group" aria-label="Card style">
+        {VARIANT_KEYS.map((key) => (
+          <button
+            key={key}
+            type="button"
+            className={`pill ${variant === key ? 'pill--on' : ''}`}
+            onClick={() => setVariant(key)}
+            aria-pressed={variant === key}
+            disabled={running}
+          >
+            {CARD_VARIANTS[key].label}
+          </button>
+        ))}
+      </div>
+      <p className="modal__hint">{VARIANT_HINTS[variant]}</p>
+
+      {error && (
+        <div className="form__error" role="alert">
+          {error}
+        </div>
+      )}
+
+      {running ? (
+        <p className="modal__hint" role="status">
+          Drawing {progress} of {invitations.length}…
+        </p>
+      ) : (
+        done > 0 && (
+          <p className="modal__hint" role="status">
+            ✨ Saved {done} {done === 1 ? 'card' : 'cards'} to your downloads.
+          </p>
+        )
+      )}
+
+      <div className="modal__actions">
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={runExport}
+          disabled={running}
+        >
+          ⬇︎ &nbsp; {running ? 'Exporting…' : `Download ${invitations.length} PNG`}
+        </button>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={onClose}
+          disabled={running}
+        >
+          Close
+        </button>
+      </div>
+    </ModalPortal>
+  );
+}
+
 function HostCardModal({ invitation, onClose }) {
   const [variant, setVariant] = useState('qr');
   const [cards, setCards] = useState({});
   const [error, setError] = useState('');
-  const url = buildInviteUrl(invitation.guid, invitation.is_godparent);
+  const url = buildInviteUrl(invitation.guid);
 
   // Only the visible variant is drawn — the QR ones are not free, and the
   // host usually sends a guest just one of the three.

@@ -1273,6 +1273,37 @@
   text-align: right;
 }
 
+.guests__select-col {
+  width: 40px;
+  text-align: center;
+}
+
+.guests__select-col input[type='checkbox'] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--pink-700);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.guests__row--selected {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 179, 217, 0.16),
+    rgba(200, 168, 255, 0.16)
+  );
+}
+
+.guests__selection {
+  margin: 12px 0 0;
+  font-size: 0.88rem;
+  color: var(--purple-700);
+}
+
+.guests__selection strong {
+  color: var(--pink-700);
+}
+
 /* ---------- Row actions popover ---------- */
 .row-actions__toggle {
   width: 36px;

@@ -114,6 +114,8 @@ Sign in with the Supabase Auth account you created. From here you can:
   - **Step by step** — the same QR with numbered instructions above it (open your camera, point it at the square, tap the link), for someone who has a smartphone but has never scanned a code.
   - **No reply needed** — no QR, no link, nothing to tap. It says their seats are saved and to simply come. For guests who won't RSVP online at all; just mark them attending yourself from the RSVPs table.
 - **Godparent proposal** — a button in the Invitations toolbar opens the "Will you be my Ninong?" / "Will you be my Ninang?" cards. There's one card per role, each a static image you send to everyone you're asking that of — separate from each person's invitation link.
+- **Export cards in bulk** — tick the checkboxes on the invitations table (or the header box to take everything currently shown), then **Export cards**. Pick one of the three styles and it saves one PNG per guest, named after them. Your browser asks once to allow multiple downloads.
+- **Filter either table** — search by name, filter by status (the invitations table adds **Pending**, i.e. who hasn't replied), and narrow to 💜 Godparents or Non-godparents. Filtering also drives the row count, the seat total, and the CSV export, so "Godparents → Export" gives you just those rows.
 - **Watch responses** — stat tiles across the top, a filterable RSVP table, and CSV export of either table.
 - **Edit an RSVP** on a guest's behalf. Invitations can only be edited while still pending — once someone has replied, their seat count is locked to what they confirmed.
 

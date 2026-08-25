@@ -32,7 +32,7 @@ export default function CheckIn() {
   const [filters, setFilters] = useState({
     search: '',
     state: 'all', // 'all' | 'pending' | 'arrived'
-    godparent: false,
+    godparent: 'all',
     kids: false
   });
   const [savingId, setSavingId] = useState(null);
@@ -87,7 +87,8 @@ export default function CheckIn() {
       if (q && !(i.name || '').toLowerCase().includes(q)) return false;
       if (filters.state === 'pending' && i.checked_in) return false;
       if (filters.state === 'arrived' && !i.checked_in) return false;
-      if (filters.godparent && !i.is_godparent) return false;
+      if (filters.godparent === 'yes' && !i.is_godparent) return false;
+      if (filters.godparent === 'no' && i.is_godparent) return false;
       if (filters.kids && !i.rsvp_bringing_kids) return false;
       return true;
     });
@@ -144,11 +145,11 @@ export default function CheckIn() {
   const filtersActive =
     filters.search ||
     filters.state !== 'all' ||
-    filters.godparent ||
+    filters.godparent !== 'all' ||
     filters.kids;
 
   const clearFilters = () =>
-    setFilters({ search: '', state: 'all', godparent: false, kids: false });
+    setFilters({ search: '', state: 'all', godparent: 'all', kids: false });
 
   // ─── Auth gate ───
   if (!authChecked) {
@@ -283,13 +284,29 @@ export default function CheckIn() {
                 <div className="guests__filter-pills" role="group" aria-label="Tags">
                   <button
                     type="button"
-                    className={`pill ${filters.godparent ? 'pill--on' : ''}`}
+                    className={`pill ${filters.godparent === 'yes' ? 'pill--on' : ''}`}
                     onClick={() =>
-                      setFilters((f) => ({ ...f, godparent: !f.godparent }))
+                      setFilters((f) => ({
+                        ...f,
+                        godparent: f.godparent === 'yes' ? 'all' : 'yes'
+                      }))
                     }
-                    aria-pressed={filters.godparent}
+                    aria-pressed={filters.godparent === 'yes'}
                   >
                     <span>💜 Godparents</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill ${filters.godparent === 'no' ? 'pill--on' : ''}`}
+                    onClick={() =>
+                      setFilters((f) => ({
+                        ...f,
+                        godparent: f.godparent === 'no' ? 'all' : 'no'
+                      }))
+                    }
+                    aria-pressed={filters.godparent === 'no'}
+                  >
+                    <span>Non-godparents</span>
                   </button>
                   <button
                     type="button"
