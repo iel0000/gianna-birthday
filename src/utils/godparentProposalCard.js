@@ -50,7 +50,7 @@ const MESSAGE_FONT = 'italic 21px "Cormorant Garamond", serif';
 const MESSAGE =
   'Mama and Daddy have chosen you to walk beside me in faith and love — to guide me, ' +
   'pray for me, and be a steady presence as I grow. It would mean the world to have ' +
-  'you stand with me on my christening day.';
+  'you stand with me on my dedication day.';
 
 // The only thing that differs between the two cards is the word in the
 // hero box and the filename the host saves it under.
@@ -138,7 +138,7 @@ export async function generateGodparentProposalCard({ role = 'ninong', portraitS
     fill: WHITE,
     baseline: 'middle'
   });
-  drawCentered(ctx, '1ST BIRTHDAY & CHRISTENING', cx, cardY + 148, {
+  drawCentered(ctx, '1ST BIRTHDAY & DEDICATION', cx, cardY + 148, {
     font: '600 16px "Quicksand", sans-serif',
     fill: WHITE
   });
@@ -242,8 +242,8 @@ export async function generateGodparentProposalCard({ role = 'ninong', portraitS
   });
   y += MESSAGE_GAP;
 
-  // ── Christening details ──
-  drawCentered(ctx, 'T H E   C H R I S T E N I N G', cx, y, {
+  // ── Dedication details ──
+  drawCentered(ctx, 'T H E   D E D I C A T I O N', cx, y, {
     font: '500 11px "Quicksand", sans-serif',
     fill: PURPLE
   });

@@ -35,7 +35,7 @@ export default function Hero() {
         <span className="hero__middle">Avery</span>
         <span>Magsino</span>
       </h1>
-      <p className="hero__subtitle">First Birthday &amp; Christening</p>
+      <p className="hero__subtitle">First Birthday &amp; Dedication</p>
 
       <div className="hero__divider" aria-hidden="true">
         <span />

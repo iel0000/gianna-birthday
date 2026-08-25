@@ -31,7 +31,7 @@ export default function GenericInvitationModal({ onClose }) {
     savePng({
       dataUrl,
       filename: 'avery-invitation.png',
-      shareTitle: "You're invited — Avery's 1st birthday & christening"
+      shareTitle: "You're invited — Avery's 1st birthday & dedication"
     });
 
   return (
@@ -51,7 +51,7 @@ export default function GenericInvitationModal({ onClose }) {
         {error ? (
           <p className="modal__loading">{error}</p>
         ) : dataUrl ? (
-          <img src={dataUrl} alt="Invitation card for Avery's 1st birthday and christening" />
+          <img src={dataUrl} alt="Invitation card for Avery's 1st birthday and dedication" />
         ) : (
           <p className="modal__loading">Drawing fairy dust…</p>
         )}

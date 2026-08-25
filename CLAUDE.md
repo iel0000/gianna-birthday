@@ -1,10 +1,10 @@
-# CLAUDE.md — Gianna Avery's 1st Birthday & Christening
+# CLAUDE.md — Gianna Avery's 1st Birthday & Dedication
 
 Working notes for anyone (human or LLM) picking up this codebase. Captures the architecture in one page, the conventions to follow, and the lessons learned the hard way during the build.
 
 ## What this is
 
-A pink-and-purple fairy-themed React invitation site for **Gianna Avery Magsino**'s 1st birthday and christening (Saturday, October 3, 2026, 1:30 PM, RCK Private Resort and Event Center, Mabalacat, Pampanga). Each guest gets a personalised `?invite=<guid>` URL. The host runs an admin guest list at `#guests` to create invitations, see responses, and edit RSVPs.
+A pink-and-purple fairy-themed React invitation site for **Gianna Avery Magsino**'s 1st birthday and dedication (Saturday, October 3, 2026, 1:30 PM, RCK Private Resort and Event Center, Mabalacat, Pampanga). Each guest gets a personalised `?invite=<guid>` URL. The host runs an admin guest list at `#guests` to create invitations, see responses, and edit RSVPs.
 
 ## Stack
 
@@ -36,7 +36,7 @@ gianna-birthday/
 ├── src/
 │   ├── components/
 │   │   ├── Hero.jsx          # celebrant name, date, portrait
-│   │   ├── EventDetails.jsx  # christening / reception / what to bring + venue card
+│   │   ├── EventDetails.jsx  # dedication / reception / what to bring + venue card
 │   │   ├── Gallery.jsx       # 4-photo grid (uses /public/photos/*)
 │   │   ├── BackgroundImages.jsx  # 5 cartoon fairies floating around the viewport
 │   │   ├── PhotoFrame.jsx    # circle/rounded photo with auto-fallback placeholder

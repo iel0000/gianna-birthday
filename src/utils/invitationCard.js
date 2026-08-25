@@ -61,7 +61,7 @@ export async function generateInvitationCard({ user, rsvp }) {
   ctx.fillText('Our Avery', cx, cardY + 130);
 
   ctx.font = '600 16px "Quicksand", sans-serif';
-  ctx.fillText('1ST BIRTHDAY & CHRISTENING', cx, cardY + 175);
+  ctx.fillText('1ST BIRTHDAY & DEDICATION', cx, cardY + 175);
 
   // Sparkle line under header
   ctx.font = '14px "Quicksand", sans-serif';

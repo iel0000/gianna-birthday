@@ -1,4 +1,4 @@
-# Gianna Avery's 1st Birthday & Christening
+# Gianna Avery's 1st Birthday & Dedication
 
 A pink-and-purple fairy-themed invitation site. Every guest gets their own link — `?invite=<guid>` — that opens a personalised page with their name and reserved seats already filled in. The host runs a private guest list at `#guests` to create invitations, watch responses land, and check people in on the day.
 

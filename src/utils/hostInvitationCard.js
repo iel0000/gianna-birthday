@@ -82,7 +82,7 @@ const STEPS = [
 ];
 
 const GUEST_MESSAGE =
-  "Come and celebrate Avery's first birthday and christening with us. " +
+  "Come and celebrate Avery's first birthday and dedication with us. " +
   'Scan the code below to open your invitation and send us your reply.';
 
 const GODPARENT_MESSAGE =
@@ -92,12 +92,12 @@ const GODPARENT_MESSAGE =
 // The 'simple' variant asks nothing of the guest, so its message says so
 // rather than pointing at a code that isn't there.
 const SIMPLE_GUEST_MESSAGE =
-  "Come and celebrate Avery's first birthday and christening with us. " +
+  "Come and celebrate Avery's first birthday and dedication with us. " +
   'We would love to have you there on her special day.';
 
 const SIMPLE_GODPARENT_MESSAGE =
   "It would mean the world to us to have you stand as one of Avery's " +
-  'godparents on her christening day.';
+  'godparents on her dedication day.';
 
 export const CARD_VARIANTS = {
   qr: { label: 'Standard', file: '' },
@@ -238,7 +238,7 @@ export async function generateHostInvitationCard({
     fill: WHITE,
     baseline: 'middle'
   });
-  drawCentered(ctx, '1ST BIRTHDAY & CHRISTENING', cx, cardY + 156, {
+  drawCentered(ctx, '1ST BIRTHDAY & DEDICATION', cx, cardY + 156, {
     font: '600 16px "Quicksand", sans-serif',
     fill: WHITE
   });

@@ -98,7 +98,7 @@ def compose_invitation(qr_img, seats):
     url_font = find_font(11)
 
     header = "Avery's Fairy Celebration"
-    sub = "1st Birthday & Christening"
+    sub = "1st Birthday & Dedication"
     _draw_centered(draw, header, canvas_w, 16, header_font, WHITE)
     _draw_centered(draw, sub, canvas_w, 48, sub_font, WHITE)
 

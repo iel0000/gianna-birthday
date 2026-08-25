@@ -7,7 +7,7 @@ const MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${MAPS_QUERY}`
 
 const cards = [
   {
-    title: 'The Christening',
+    title: 'The Dedication',
     when: 'Saturday · October 3, 2026 · 1:30 PM',
     note: 'A blessing for our little fairy as she begins her faith journey.',
     icon: (

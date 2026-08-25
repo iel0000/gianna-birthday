@@ -97,7 +97,7 @@ export async function sendRsvpEmails({ user, rsvp }) {
     message: rsvp.message || '—',
     submitted_at: submittedAt,
     celebrant_name: 'Gianna Avery Magsino',
-    event_title: '1st Birthday & Christening',
+    event_title: '1st Birthday & Dedication',
     rsvp_link: rsvpLink
   };
 

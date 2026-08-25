@@ -37,16 +37,13 @@ const DIVIDER_H = 36;
 const MESSAGE_LINE_H = 31;
 const MESSAGE_GAP = 30;
 const BOX_H = 176;
-const DEADLINE_H = 42;
-const BODY_BOTTOM_PAD = 38;
+const BODY_BOTTOM_PAD = 46;
 
 const MESSAGE_FONT = 'italic 21px "Cormorant Garamond", serif';
 
 const MESSAGE =
   "Our little fairy turns one, and she is being welcomed into the faith on " +
   'the same day. Come share the cake, the blessings and the fairy dust with us.';
-
-const RSVP_BY = 'Kindly reply on or before September 17, 2026';
 
 export async function generateGenericInvitationCard({ portraitSrc } = {}) {
   await ensureFontsLoaded();
@@ -67,7 +64,6 @@ export async function generateGenericInvitationCard({ portraitSrc } = {}) {
     messageLines.length * MESSAGE_LINE_H +
     MESSAGE_GAP +
     BOX_H +
-    DEADLINE_H +
     BODY_BOTTOM_PAD;
 
   const H = PAD * 2 + HEADER_H + bodyH;
@@ -121,7 +117,7 @@ export async function generateGenericInvitationCard({ portraitSrc } = {}) {
     fill: WHITE,
     baseline: 'middle'
   });
-  drawCentered(ctx, '1ST BIRTHDAY & CHRISTENING', cx, cardY + 148, {
+  drawCentered(ctx, '1ST BIRTHDAY & DEDICATION', cx, cardY + 148, {
     font: '600 16px "Quicksand", sans-serif',
     fill: WHITE
   });
@@ -227,7 +223,7 @@ export async function generateGenericInvitationCard({ portraitSrc } = {}) {
     font: '600 18px "Cormorant Garamond", serif',
     fill: DEEP_PURPLE
   });
-  drawCentered(ctx, 'Christening, with the reception to follow', cx, y + 78, {
+  drawCentered(ctx, 'Dedication, with the reception to follow', cx, y + 78, {
     font: '400 13px "Quicksand", sans-serif',
     fill: PURPLE
   });
@@ -243,13 +239,6 @@ export async function generateGenericInvitationCard({ portraitSrc } = {}) {
   drawCentered(ctx, 'Mabalacat City, Pampanga', cx, y + 156, {
     font: '400 13px "Quicksand", sans-serif',
     fill: PURPLE
-  });
-  y += BOX_H;
-
-  drawCentered(ctx, `✦  ${RSVP_BY}  ✦`, cx, y + DEADLINE_H / 2, {
-    font: '600 15px "Quicksand", sans-serif',
-    fill: PINK,
-    baseline: 'middle'
   });
 
   return canvas.toDataURL('image/png');
