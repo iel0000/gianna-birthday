@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { generateInvitationCard } from '../utils/invitationCard.js';
+import { savePng } from '../utils/savePng.js';
 import ModalPortal from './ModalPortal.jsx';
 
 export default function InvitationCardModal({ user, rsvp, onClose }) {
   const [dataUrl, setDataUrl] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -22,17 +25,25 @@ export default function InvitationCardModal({ user, rsvp, onClose }) {
     };
   }, [user, rsvp]);
 
-  const download = () => {
-    if (!dataUrl) return;
-    const a = document.createElement('a');
-    a.href = dataUrl;
+  const download = async () => {
+    if (!dataUrl || saving) return;
     const safe = (user.invitation?.name || user.name || 'guest')
       .replace(/[^a-z0-9]+/gi, '-')
       .toLowerCase();
-    a.download = `avery-invitation-${safe}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    setSaving(true);
+    setSaveError('');
+    try {
+      await savePng({
+        dataUrl,
+        filename: `avery-invitation-${safe}.png`,
+        shareTitle: "Avery's invitation"
+      });
+    } catch (err) {
+      console.warn('[invitation card] save failed', err);
+      setSaveError('Could not save it automatically — press and hold the card above.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -58,14 +69,26 @@ export default function InvitationCardModal({ user, rsvp, onClose }) {
         )}
       </div>
 
+      <p className="modal__hint">
+        On a phone this opens your share sheet — choose <strong>Save Image</strong>,
+        or simply press and hold the card above. If nothing happens, open this page
+        in Safari or Chrome instead of inside Messenger.
+      </p>
+
+      {saveError && (
+        <div className="form__error" role="alert">
+          {saveError}
+        </div>
+      )}
+
       <div className="modal__actions">
         <button
           type="button"
           className="btn btn--primary"
           onClick={download}
-          disabled={!dataUrl}
+          disabled={!dataUrl || saving}
         >
-          ⬇︎ &nbsp; Download my pass
+          ⬇︎ &nbsp; {saving ? 'Saving…' : 'Save my pass'}
         </button>
         <button type="button" className="btn btn--ghost" onClick={onClose}>
           Close

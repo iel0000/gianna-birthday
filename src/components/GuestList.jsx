@@ -26,6 +26,7 @@ import {
 } from '../utils/hostInvitationCard.js';
 import GodparentProposalModal from './GodparentProposalModal.jsx';
 import ModalPortal from './ModalPortal.jsx';
+import { savePng } from '../utils/savePng.js';
 import Pagination, { usePagination } from './Pagination.jsx';
 import { useConfirm } from './ConfirmDialog.jsx';
 
@@ -1779,17 +1780,13 @@ function HostCardModal({ invitation, onClose }) {
 
   const dataUrl = cards[variant];
 
-  const download = () => {
-    if (!dataUrl) return;
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    const safeName = invitation.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-    const base = safeName || invitation.guid.slice(0, 8);
-    a.download = `invitation-${base}${CARD_VARIANTS[variant].file}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
+  const download = () =>
+    dataUrl &&
+    savePng({
+      dataUrl,
+      filename: cardFileName(invitation, variant),
+      shareTitle: `Invitation for ${invitation.name}`
+    });
 
   return (
     <ModalPortal

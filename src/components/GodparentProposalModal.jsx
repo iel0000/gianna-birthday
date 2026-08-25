@@ -4,6 +4,7 @@ import {
   PROPOSAL_ROLES
 } from '../utils/godparentProposalCard.js';
 import ModalPortal from './ModalPortal.jsx';
+import { savePng } from '../utils/savePng.js';
 
 const ROLE_KEYS = Object.keys(PROPOSAL_ROLES);
 
@@ -44,15 +45,13 @@ export default function GodparentProposalModal({ onClose }) {
 
   const dataUrl = cards[role];
 
-  const download = () => {
-    if (!dataUrl) return;
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = PROPOSAL_ROLES[role].file;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
+  const download = () =>
+    dataUrl &&
+    savePng({
+      dataUrl,
+      filename: PROPOSAL_ROLES[role].file,
+      shareTitle: `Will you be my ${PROPOSAL_ROLES[role].label}?`
+    });
 
   return (
     <ModalPortal
