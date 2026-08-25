@@ -49,9 +49,18 @@ export async function sendRsvpEmails({ user, rsvp }) {
   // Site origin for the deep-link back into the invitation. Prefer the
   // invitation guid (the new primary URL) if we have one; otherwise fall
   // back to the legacy ?rsvp=email path so older invites still work.
-  const siteOrigin =
+  //
+  // The trailing slash matters: VITE_SITE_URL may or may not carry one, and
+  // `${base}/?invite=` on a base that already ends in "/" yields
+  // "https://host//?invite=…". That double slash loads a blank page — the
+  // app's relative asset paths resolve against the empty first path
+  // segment and 404 — so normalise it away rather than trusting the env var.
+  const siteOrigin = String(
     import.meta.env.VITE_SITE_URL ||
-    (typeof window !== 'undefined' ? window.location.origin : '');
+      (typeof window !== 'undefined' ? window.location.origin : '')
+  )
+    .trim()
+    .replace(/\/+$/, '');
   const rsvpLink = user.invitation?.guid
     ? `${siteOrigin}/?invite=${user.invitation.guid}`
     : guestEmail

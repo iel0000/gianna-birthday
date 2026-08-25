@@ -48,7 +48,9 @@ jobs:
           VITE_EMAILJS_HOST_TEMPLATE_ID: ${{ secrets.VITE_EMAILJS_HOST_TEMPLATE_ID }}
           VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
           VITE_HOST_EMAIL: ${{ secrets.VITE_HOST_EMAIL }}
-          VITE_SITE_URL: ${{ steps.pages.outputs.origin }}${{ steps.pages.outputs.base_path }}/
+          # No trailing slash — the app appends "/?invite=<guid>" itself, and a
+          # slash here produced links like "https://host//?invite=…".
+          VITE_SITE_URL: ${{ steps.pages.outputs.origin }}${{ steps.pages.outputs.base_path }}
 
           # Supabase credentials — define these as repository secrets in
           # Settings → Secrets and variables → Actions. Leaving them unset

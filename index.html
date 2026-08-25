@@ -3,6 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Invitation emails sent before 2026-08-25 carried a doubled slash —
+      // https://host//?invite=<guid> — because VITE_SITE_URL already ended in
+      // one. That path breaks relative asset URLs (they resolve to
+      // //assets/… , which the browser reads as protocol-relative), so the
+      // page comes up blank and the RSVP never loads. This runs inline,
+      // before any asset request, so it repairs those links in place.
+      (function () {
+        var path = window.location.pathname;
+        var fixed = path.replace(/\/{2,}/g, '/');
+        if (fixed !== path) {
+          window.location.replace(fixed + window.location.search + window.location.hash);
+        }
+      })();
+    </script>
     <title>Gianna Avery's 1st Birthday & Christening</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
