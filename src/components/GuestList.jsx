@@ -1551,36 +1551,52 @@ function BulkCardExportModal({ invitations, onClose }) {
   const runExport = async () => {
     setError('');
     setDone(0);
+    setProgress({ step: 0, zipping: false });
     const portraitSrc = `${import.meta.env.BASE_URL}photos/gianna-hero.jpg`;
 
-    for (let i = 0; i < invitations.length; i += 1) {
-      const invitation = invitations[i];
-      setProgress(i + 1);
-      try {
+    try {
+      // Loaded on demand — jszip is a host-only tool, and a dynamic import
+      // keeps it out of the bundle every guest downloads.
+      const { default: JSZip } = await import('jszip');
+      const zip = new JSZip();
+
+      for (let i = 0; i < invitations.length; i += 1) {
+        const invitation = invitations[i];
+        setProgress({ step: i + 1, zipping: false });
         const dataUrl = await generateHostInvitationCard({
           invitation,
           url: buildInviteUrl(invitation.guid),
           portraitSrc,
           variant
         });
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = cardFileName(invitation, variant);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setDone(i + 1);
-      } catch (err) {
-        console.error('[invitation card] bulk export failed', invitation.name, err);
-        setError(`Stopped at ${invitation.name}: ${err?.message || 'could not draw the card'}`);
-        setProgress(null);
-        return;
+        // PNGs are already compressed, so the zip stores them as-is.
+        zip.file(cardFileName(invitation, variant), dataUrl.split(',')[1], {
+          base64: true
+        });
       }
-      // Breathe between saves so the browser doesn't drop queued downloads.
-      await new Promise((resolve) => setTimeout(resolve, 350));
-    }
 
-    setProgress(null);
+      setProgress({ step: invitations.length, zipping: true });
+      const blob = await zip.generateAsync({ type: 'blob' });
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = `avery-invitation-cards-${stamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Deferred — revoking immediately can cancel a large download before
+      // the browser has finished reading the blob.
+      setTimeout(() => URL.revokeObjectURL(href), 60_000);
+
+      setDone(invitations.length);
+    } catch (err) {
+      console.error('[invitation card] bulk export failed', err);
+      setError(err?.message || 'Could not build the zip.');
+    } finally {
+      setProgress(null);
+    }
   };
 
   return (
@@ -1595,8 +1611,7 @@ function BulkCardExportModal({ invitations, onClose }) {
         {invitations.length} invitation {invitations.length === 1 ? 'card' : 'cards'}
       </h3>
       <p className="modal__sub">
-        One PNG per guest, named after them. Your browser may ask once to allow
-        multiple downloads — say yes and the rest will follow.
+        Saved as a single zip — one PNG per guest inside, named after them.
       </p>
 
       <div className="modal__choices" role="group" aria-label="Card style">
@@ -1623,12 +1638,15 @@ function BulkCardExportModal({ invitations, onClose }) {
 
       {running ? (
         <p className="modal__hint" role="status">
-          Drawing {progress} of {invitations.length}…
+          {progress.zipping
+            ? 'Zipping…'
+            : `Drawing ${progress.step} of ${invitations.length}…`}
         </p>
       ) : (
         done > 0 && (
           <p className="modal__hint" role="status">
-            ✨ Saved {done} {done === 1 ? 'card' : 'cards'} to your downloads.
+            ✨ Saved a zip with {done} {done === 1 ? 'card' : 'cards'} to your
+            downloads.
           </p>
         )
       )}
@@ -1640,7 +1658,7 @@ function BulkCardExportModal({ invitations, onClose }) {
           onClick={runExport}
           disabled={running}
         >
-          ⬇︎ &nbsp; {running ? 'Exporting…' : `Download ${invitations.length} PNG`}
+          ⬇︎ &nbsp; {running ? 'Exporting…' : 'Download zip'}
         </button>
         <button
           type="button"
