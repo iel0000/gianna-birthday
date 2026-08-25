@@ -1698,6 +1698,29 @@
   max-width: 540px;
 }
 
+/* Segmented pill choices inside a modal (proposal role, card style). */
+.modal__choices {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.modal__choices .pill {
+  margin-right: 0;
+  font-size: 0.86rem;
+  padding: 8px 20px;
+}
+
+.modal__hint {
+  margin: 10px auto 0;
+  max-width: 420px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--purple-700);
+  opacity: 0.85;
+}
+
 .card-modal__preview {
   margin: 14px auto 18px;
   padding: 12px;

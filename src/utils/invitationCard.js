@@ -1,4 +1,4 @@
-import { ensureFontsLoaded, roundedRect } from './canvasCard.js';
+import { ensureFontsLoaded, fitFontSize, roundedRect } from './canvasCard.js';
 
 // Renders the personalised invitation card onto an offscreen canvas
 // and returns it as a PNG data URL. Layout is portrait 800×950 — sized
@@ -78,7 +78,15 @@ export async function generateInvitationCard({ user, rsvp }) {
 
   // Guest name (cursive, gradient)
   const displayName = user.invitation?.name || user.name || 'Dear Guest';
-  ctx.font = '64px "Great Vibes", cursive';
+  const nameSize = fitFontSize(
+    ctx,
+    displayName,
+    cardW - 100,
+    (size) => `${size}px "Great Vibes", cursive`,
+    64,
+    28
+  );
+  ctx.font = `${nameSize}px "Great Vibes", cursive`;
   const nameGradient = ctx.createLinearGradient(cardX, bodyY + 40, cardX + cardW, bodyY + 80);
   nameGradient.addColorStop(0, '#d94994');
   nameGradient.addColorStop(0.6, '#a07cff');

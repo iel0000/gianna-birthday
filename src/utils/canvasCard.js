@@ -1,6 +1,7 @@
-// Shared canvas primitives for the PNG cards this site generates —
-// the guest's invitation card (invitationCard.js) and the host's
-// QR invitation card (qrInvitationCard.js).
+// Shared canvas primitives for the PNG cards this site generates: the
+// guest's invitation card (invitationCard.js), the host's invitation card
+// (hostInvitationCard.js), and the godparent proposal cards
+// (godparentProposalCard.js).
 
 // Wait for the brand web fonts to be ready before painting a card —
 // otherwise the canvas falls back to a generic serif while the

@@ -2,6 +2,11 @@ import { supabase, isSupabaseConfigured } from './supabaseClient.js';
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
+// Every invitation read returns the same shape — keep the list in one place
+// so a new column reaches all of them.
+const INVITATION_COLUMNS =
+  'id, guid, name, seats, is_godparent, created_at';
+
 // Push an RSVP into Supabase as the canonical record. Local storage still
 // drives the UI's "already-submitted" lock; this is a write-only mirror so
 // the host can query the database for the real guest list.
@@ -194,7 +199,7 @@ export async function fetchInvitation(guid) {
 
   const { data, error } = await supabase
     .from('invitations')
-    .select('id, guid, name, seats, is_godparent, created_at')
+    .select(INVITATION_COLUMNS)
     .eq('guid', cleanGuid)
     .maybeSingle();
 
@@ -222,7 +227,7 @@ export async function createInvitation({ name, seats, isGodparent }) {
       seats: seatNum,
       is_godparent: !!isGodparent
     })
-    .select('id, guid, name, seats, is_godparent, created_at')
+    .select(INVITATION_COLUMNS)
     .single();
 
   if (error) {
@@ -254,7 +259,7 @@ export async function updateInvitation({ guid, name, seats, isGodparent }) {
       is_godparent: !!isGodparent
     })
     .eq('guid', cleanGuid)
-    .select('id, guid, name, seats, is_godparent, created_at')
+    .select(INVITATION_COLUMNS)
     .single();
 
   if (error) {
@@ -307,7 +312,7 @@ export async function bulkCreateInvitations(rows) {
   const { data, error } = await supabase
     .from('invitations')
     .insert(valid)
-    .select('id, guid, name, seats, is_godparent, created_at');
+    .select(INVITATION_COLUMNS);
 
   if (error) {
     console.error('[Invitation db] bulk insert failed', error);
@@ -347,7 +352,7 @@ export async function fetchAllInvitationsWithStatus() {
   const [invRes, rsvpRes] = await Promise.all([
     supabase
       .from('invitations')
-      .select('id, guid, name, seats, is_godparent, created_at')
+      .select(INVITATION_COLUMNS)
       .order('created_at', { ascending: false }),
     supabase
       .from('rsvps')

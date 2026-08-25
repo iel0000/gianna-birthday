@@ -43,6 +43,7 @@ gianna-birthday/
 │   │   ├── Sparkles.jsx      # animated background sparkles
 │   │   ├── Login.jsx         # "Open your invitation link" message (no manual login)
 │   │   ├── ModalPortal.jsx   # shared modal shell — portals to <body> (see CSS quirks)
+│   │   ├── GodparentProposalModal.jsx # admin: preview + download the proposal PNG
 │   │   ├── Pagination.jsx    # usePagination hook + page controls for the admin tables
 │   │   ├── RsvpForm.jsx      # the unified RSVP form (guest or godparent mode)
 │   │   └── GuestList.jsx     # admin page (auth-gated) — invitations + RSVPs + CSV
@@ -51,7 +52,8 @@ gianna-birthday/
 │   ├── utils/
 │   │   ├── canvasCard.js     # shared canvas primitives for the PNG card generators
 │   │   ├── invitationCard.js # guest's downloadable invitation pass (canvas → PNG)
-│   │   ├── qrInvitationCard.js # host's invitation card with the QR embedded
+│   │   ├── hostInvitationCard.js # host's card — 3 variants (qr / guided / simple)
+│   │   ├── godparentProposalCard.js # static "Will you be my Ninong/Ninang?" card
 │   │   ├── supabaseClient.js # single createClient() instance (anon key)
 │   │   ├── adminAuth.js      # Supabase Auth wrapper for the host login
 │   │   ├── rsvpDb.js         # ALL DB ops: invitations CRUD + rsvps upsert/lookup
@@ -187,7 +189,7 @@ These each cost real iteration time. Don't repeat them.
 
 - **`overflow-x: auto` implicitly clips overflow-y.** A dropdown menu inside a horizontally-scrollable table-wrapper gets clipped. Render via React Portal at `document.body` and position with `getBoundingClientRect`.
 - **`backdrop-filter` breaks `position: fixed` children — every modal must be portalled.** `.card` carries `backdrop-filter: blur(14px)`, which makes each card *both* the containing block for its fixed-position descendants *and* its own stacking context. A `.modal` rendered inside a card therefore sizes `inset: 0` against the card instead of the viewport, and its `z-index: 100` is scoped to that card — so any *later* sibling card paints on top of it. This is what made the invitation-card modal appear behind the RSVPs table. Never render a `.modal` inline; use `<ModalPortal>` (`src/components/ModalPortal.jsx`), which portals to `<body>` and owns the backdrop, close button, Escape handling, and the `busy` (non-dismissable while saving) state. Bumping `z-index` does not fix this — a child cannot escape its ancestor's stacking context.
-- **Cursive scripts need padding.** `Great Vibes` has tall ascenders/descenders. `line-height: 1` clips the G/g — needs `line-height: 1.15` plus a touch of vertical padding.
+- **Cursive scripts need padding.** `Great Vibes` has tall ascenders/descenders. `line-height: 1` clips the G/g — needs `line-height: 1.15` plus a touch of vertical padding. The same applies on canvas: a dashed hero box holding a cursive line needs room for the descenders, so put dividers *outside* the box, not at its bottom edge. Its slash also slants right — `Ninong/Ninang` collides, and even spacing still reads as `/Ninang`; pad the trailing side more than the leading one.
 - **`mix-blend-mode: multiply` is a hack** to remove a white background. Real transparency (PNG alpha) is always cleaner. The Python script in `scripts/remove-bg.py` does the threshold/feather pass.
 
 ### React state management

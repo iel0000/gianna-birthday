@@ -19,7 +19,11 @@ import {
   onAdminAuthChange
 } from '../utils/adminAuth.js';
 import { isSupabaseConfigured } from '../utils/supabaseClient.js';
-import { generateQrInvitationCard } from '../utils/qrInvitationCard.js';
+import {
+  CARD_VARIANTS,
+  generateHostInvitationCard
+} from '../utils/hostInvitationCard.js';
+import GodparentProposalModal from './GodparentProposalModal.jsx';
 import ModalPortal from './ModalPortal.jsx';
 import Pagination, { usePagination } from './Pagination.jsx';
 import { useConfirm } from './ConfirmDialog.jsx';
@@ -639,19 +643,44 @@ function InvitationManager({ invitations, onChanged }) {
   const [error, setError] = useState('');
   const [copiedGuid, setCopiedGuid] = useState(null);
   const [qrInvitation, setQrInvitation] = useState(null);
+  const [showProposal, setShowProposal] = useState(false);
   const [editingInvitation, setEditingInvitation] = useState(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    godparent: false
+  });
   const fileInputRef = useRef(null);
 
   const totalInvitations = invitations.length;
-  const invitationPages = usePagination(invitations, {
-    pageSize: INVITATION_PAGE_SIZE
+
+  const filteredInvitations = useMemo(() => {
+    const q = filters.search.trim().toLowerCase();
+    return invitations.filter((inv) => {
+      if (q && !(inv.name || '').toLowerCase().includes(q)) return false;
+      if (filters.status !== 'all' && inv.status !== filters.status) return false;
+      if (filters.godparent && !inv.is_godparent) return false;
+      return true;
+    });
+  }, [invitations, filters]);
+
+  const filtersActive =
+    filters.search || filters.status !== 'all' || filters.godparent;
+
+  const clearFilters = () =>
+    setFilters({ search: '', status: 'all', godparent: false });
+
+  const invitationPages = usePagination(filteredInvitations, {
+    pageSize: INVITATION_PAGE_SIZE,
+    resetKey: JSON.stringify(filters)
   });
 
+  // Seat total follows the filter, so "Godparents only" shows their seats.
   const totalInvitationSeats = useMemo(
-    () => invitations.reduce((sum, inv) => sum + (inv.seats || 0), 0),
-    [invitations]
+    () => filteredInvitations.reduce((sum, inv) => sum + (inv.seats || 0), 0),
+    [filteredInvitations]
   );
 
   const onCreate = async (e) => {
@@ -767,7 +796,7 @@ function InvitationManager({ invitations, onChanged }) {
       }
 
       const isTruthy = (v) =>
-        /^(yes|true|y|1|godparent|💜)$/i.test(String(v || '').trim());
+        /^(yes|true|y|1|godparent|ninong|ninang|💜)$/i.test(String(v || '').trim());
 
       const rows = dataRows
         .filter((cells) => cells.some((c) => String(c).trim()))
@@ -807,7 +836,7 @@ function InvitationManager({ invitations, onChanged }) {
       { label: 'Submitted At', get: (i) => i.submitted_at || '' },
       { label: 'Invite URL', get: (i) => buildInviteUrl(i.guid, i.is_godparent) }
     ];
-    downloadCsv(`avery-invitations-${stamp}.csv`, toCsv(invitations, cols));
+    downloadCsv(`avery-invitations-${stamp}.csv`, toCsv(filteredInvitations, cols));
   };
 
   return (
@@ -815,7 +844,11 @@ function InvitationManager({ invitations, onChanged }) {
       <div className="guests__section-head">
         <h2 className="card__title">
           Invitations &nbsp;
-          <span className="guests__count">{totalInvitations}</span>
+          <span className="guests__count">
+            {filtersActive
+              ? `${filteredInvitations.length} of ${totalInvitations}`
+              : totalInvitations}
+          </span>
           {totalInvitationSeats > 0 && (
             <span className="guests__count">{totalInvitationSeats} seats reserved</span>
           )}
@@ -828,6 +861,14 @@ function InvitationManager({ invitations, onChanged }) {
             onChange={onFileChange}
             style={{ display: 'none' }}
           />
+          <button
+            type="button"
+            className="btn btn--ghost guests__export"
+            onClick={() => setShowProposal(true)}
+            title="Download the shareable “Will you be my Ninong/Ninang?” card"
+          >
+            💜 &nbsp; Godparent proposal
+          </button>
           <button
             type="button"
             className="btn btn--ghost guests__export"
@@ -849,7 +890,7 @@ function InvitationManager({ invitations, onChanged }) {
             type="button"
             className="btn btn--primary guests__export"
             onClick={exportInvitations}
-            disabled={invitations.length === 0}
+            disabled={filteredInvitations.length === 0}
           >
             ⬇︎ &nbsp; Export to CSV
           </button>
@@ -923,6 +964,7 @@ function InvitationManager({ invitations, onChanged }) {
           <span className="switch__label">Mark as godparent invitation</span>
         </label>
 
+
         {error && <div className="form__error" role="alert">{error}</div>}
 
         <button type="submit" className="btn btn--primary" disabled={submitting}>
@@ -930,8 +972,60 @@ function InvitationManager({ invitations, onChanged }) {
         </button>
       </form>
 
+      {invitations.length > 0 && (
+        <div className="guests__filters">
+          <input
+            type="search"
+            className="guests__search"
+            placeholder="Search name…"
+            value={filters.search}
+            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+          />
+          <div className="guests__filter-pills" role="group" aria-label="Status">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'attending', label: 'Attending' },
+              { value: 'declined', label: 'Declined' }
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`pill ${filters.status === opt.value ? 'pill--on' : ''}`}
+                onClick={() => setFilters((f) => ({ ...f, status: opt.value }))}
+                aria-pressed={filters.status === opt.value}
+              >
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+          <div className="guests__filter-pills" role="group" aria-label="Tags">
+            <button
+              type="button"
+              className={`pill ${filters.godparent ? 'pill--on' : ''}`}
+              onClick={() => setFilters((f) => ({ ...f, godparent: !f.godparent }))}
+              aria-pressed={filters.godparent}
+            >
+              <span>💜 Godparents</span>
+            </button>
+          </div>
+          {filtersActive && (
+            <button type="button" className="link-button" onClick={clearFilters}>
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+
       {invitations.length === 0 ? (
         <p className="guests__empty">No invitations yet. Add one above to generate a link.</p>
+      ) : filteredInvitations.length === 0 ? (
+        <p className="guests__empty">
+          No invitations match the current filters.{' '}
+          <button type="button" className="link-button" onClick={clearFilters}>
+            Clear filters
+          </button>
+        </p>
       ) : (
         <div className="guests__table-wrap">
           <table className="guests__table">
@@ -1026,10 +1120,14 @@ function InvitationManager({ invitations, onChanged }) {
       />
 
       {qrInvitation && (
-        <QrModal
+        <HostCardModal
           invitation={qrInvitation}
           onClose={() => setQrInvitation(null)}
         />
+      )}
+
+      {showProposal && (
+        <GodparentProposalModal onClose={() => setShowProposal(false)} />
       )}
 
       {editingInvitation && (
@@ -1273,6 +1371,7 @@ function EditInvitationModal({ invitation, onClose, onSaved }) {
           <span className="switch__label">Mark as godparent invitation</span>
         </label>
 
+
         {error && (
           <div className="form__error" role="alert">
             {error}
@@ -1297,31 +1396,50 @@ function EditInvitationModal({ invitation, onClose, onSaved }) {
   );
 }
 
-function QrModal({ invitation, onClose }) {
-  const [dataUrl, setDataUrl] = useState('');
+const VARIANT_KEYS = Object.keys(CARD_VARIANTS);
+
+const VARIANT_HINTS = {
+  qr: 'Message, reserved seats, and the QR that opens their RSVP.',
+  guided:
+    'Adds numbered camera instructions above the QR — for a guest with a smartphone who has never scanned a code.',
+  simple:
+    'No QR, no link, nothing to tap. Their seats are reserved and the card says so — for a guest who will not RSVP online at all.'
+};
+
+function HostCardModal({ invitation, onClose }) {
+  const [variant, setVariant] = useState('qr');
+  const [cards, setCards] = useState({});
+  const [error, setError] = useState('');
   const url = buildInviteUrl(invitation.guid, invitation.is_godparent);
 
+  // Only the visible variant is drawn — the QR ones are not free, and the
+  // host usually sends a guest just one of the three.
   useEffect(() => {
+    if (cards[variant]) return;
     let cancelled = false;
-    const logoSrc = `${import.meta.env.BASE_URL}photos/gianna-hero.jpg`;
-    generateQrInvitationCard({ invitation, url, logoSrc })
+    const portraitSrc = `${import.meta.env.BASE_URL}photos/gianna-hero.jpg`;
+    generateHostInvitationCard({ invitation, url, portraitSrc, variant })
       .then((d) => {
-        if (!cancelled) setDataUrl(d);
+        if (!cancelled) setCards((prev) => ({ ...prev, [variant]: d }));
       })
       .catch((err) => {
-        console.error('[QR] card generation failed', err);
+        console.error('[invitation card] generation failed', err);
+        if (!cancelled) setError(err?.message || 'Could not draw the card.');
       });
     return () => {
       cancelled = true;
     };
-  }, [invitation, url]);
+  }, [invitation, url, variant, cards]);
+
+  const dataUrl = cards[variant];
 
   const download = () => {
     if (!dataUrl) return;
     const a = document.createElement('a');
     a.href = dataUrl;
     const safeName = invitation.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-    a.download = `invitation-${safeName || invitation.guid.slice(0, 8)}.png`;
+    const base = safeName || invitation.guid.slice(0, 8);
+    a.download = `invitation-${base}${CARD_VARIANTS[variant].file}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1339,18 +1457,37 @@ function QrModal({ invitation, onClose }) {
         {invitation.is_godparent ? ' · Godparent' : ''} · send this image to your guest
       </p>
 
+      <div className="modal__choices" role="group" aria-label="Card style">
+        {VARIANT_KEYS.map((key) => (
+          <button
+            key={key}
+            type="button"
+            className={`pill ${variant === key ? 'pill--on' : ''}`}
+            onClick={() => setVariant(key)}
+            aria-pressed={variant === key}
+          >
+            {CARD_VARIANTS[key].label}
+          </button>
+        ))}
+      </div>
+      <p className="modal__hint">{VARIANT_HINTS[variant]}</p>
+
       <div className="modal__qr">
-        {dataUrl ? (
+        {error ? (
+          <p className="modal__loading">{error}</p>
+        ) : dataUrl ? (
           <img
             src={dataUrl}
-            alt={`Invitation card for ${invitation.name} with a QR code linking to ${url}`}
+            alt={`${CARD_VARIANTS[variant].label} invitation card for ${invitation.name}`}
           />
         ) : (
           <p className="modal__loading">Drawing fairy dust…</p>
         )}
       </div>
 
-      <p className="modal__url" title={url}>{url}</p>
+      {variant !== 'simple' && (
+        <p className="modal__url" title={url}>{url}</p>
+      )}
 
       <div className="modal__actions">
         <button
