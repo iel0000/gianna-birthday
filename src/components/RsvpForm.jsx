@@ -358,6 +358,11 @@ export default function RsvpForm({ mode = 'guest' }) {
           />
         </label>
 
+        <p className="rsvp__deadline">
+          <span aria-hidden="true">🗓️</span> Kindly send your reply on or before{' '}
+          <strong>September 17, 2026</strong> so we can finalise the seats.
+        </p>
+
         <button type="submit" className="btn btn--primary" disabled={submitting}>
           {submitting
             ? 'Sending fairy mail…'

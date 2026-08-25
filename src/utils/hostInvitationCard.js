@@ -57,6 +57,7 @@ const MESSAGE_FONT = 'italic 21px "Cormorant Garamond", serif';
 const STEPS_TITLE_H = 36;
 const STEP_LINE_H = 34;
 const STEPS_BOTTOM_GAP = 14;
+const DEADLINE_H = 38;
 const NOTE_GAP = 26;
 const NOTE_BOX_H = 134;
 const WHEN_H = 26;
@@ -69,6 +70,10 @@ const PORTRAIT_SIZE = 170;
 const PORTRAIT_RING = 7;
 const PORTRAIT_GAP = 26;
 const PORTRAIT_BLOCK_H = PORTRAIT_SIZE + PORTRAIT_RING * 2 + PORTRAIT_GAP;
+
+// Only the variants that ask for a reply carry the deadline — the 'simple'
+// card asks for nothing, so a cut-off there would contradict it.
+const RSVP_BY = 'Kindly reply on or before September 17, 2026';
 
 const STEPS = [
   'Open the camera on your phone',
@@ -170,7 +175,7 @@ export async function generateHostInvitationCard({
       : 0;
 
   const replyH = showsQr
-    ? (variant === 'guided' ? stepsH : QR_CAPTION_H) + QR_FRAME_SIZE
+    ? (variant === 'guided' ? stepsH : QR_CAPTION_H) + QR_FRAME_SIZE + DEADLINE_H
     : NOTE_GAP + NOTE_BOX_H;
 
   const bodyH =
@@ -469,6 +474,13 @@ export async function generateHostInvitationCard({
     ctx.drawImage(qrCanvas, frameX + QR_FRAME_PAD, y + QR_FRAME_PAD, QR_SIZE, QR_SIZE);
     ctx.restore();
     y += QR_FRAME_SIZE;
+
+    drawCentered(ctx, `✦  ${RSVP_BY}  ✦`, cx, y + DEADLINE_H / 2, {
+      font: '600 15px "Quicksand", sans-serif',
+      fill: PINK,
+      baseline: 'middle'
+    });
+    y += DEADLINE_H;
   }
   y += VENUE_GAP;
 

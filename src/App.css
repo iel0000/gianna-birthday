@@ -1782,6 +1782,26 @@
   margin-bottom: 16px;
 }
 
+/* RSVP-by date, the last thing read before the submit button. */
+.rsvp__deadline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 2px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1.5px dashed var(--purple-300);
+  background: linear-gradient(135deg, rgba(255, 179, 217, 0.16), rgba(200, 168, 255, 0.16));
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--purple-900);
+}
+
+.rsvp__deadline strong {
+  color: var(--pink-700);
+  white-space: nowrap;
+}
+
 /* Big, gradient guest name so the recipient sees themselves clearly */
 .rsvp__guest-name {
   font-family: 'Cormorant Garamond', serif;
