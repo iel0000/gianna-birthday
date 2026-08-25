@@ -69,12 +69,6 @@ export default function InvitationCardModal({ user, rsvp, onClose }) {
         )}
       </div>
 
-      <p className="modal__hint">
-        On a phone this opens your share sheet — choose <strong>Save Image</strong>,
-        or simply press and hold the card above. If nothing happens, open this page
-        in Safari or Chrome instead of inside Messenger.
-      </p>
-
       {saveError && (
         <div className="form__error" role="alert">
           {saveError}
