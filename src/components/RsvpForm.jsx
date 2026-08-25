@@ -322,13 +322,16 @@ export default function RsvpForm({ mode = 'guest' }) {
                 <span className="switch__track" aria-hidden="true">
                   <span className="switch__thumb" />
                 </span>
-                <span className="switch__label">Bringing little ones with you?</span>
+                <span className="switch__label">
+                  Bringing little ones with you?{' '}
+                  <small className="switch__note">10 years old and below</small>
+                </span>
               </label>
             </div>
 
             {form.bringingKids && (
               <label className="form__field">
-                <span>How many little ones?</span>
+                <span>How many little ones? (10 years old and below)</span>
                 <input
                   type="number"
                   min="1"
@@ -359,8 +362,12 @@ export default function RsvpForm({ mode = 'guest' }) {
         </label>
 
         <p className="rsvp__deadline">
-          <span aria-hidden="true">🗓️</span> Kindly send your reply on or before{' '}
-          <strong>September 17, 2026</strong> so we can finalise the seats.
+          <span className="rsvp__deadline-icon" aria-hidden="true">🗓️</span>
+          <span className="rsvp__deadline-text">
+            <span>Kindly send your reply on or before</span>
+            <strong>September 17, 2026</strong>
+            <span>so we can finalise the seats.</span>
+          </span>
         </p>
 
         <button type="submit" className="btn btn--primary" disabled={submitting}>
