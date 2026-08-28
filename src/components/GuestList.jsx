@@ -133,6 +133,7 @@ export default function GuestList() {
     kids: false
   });
   const [editingRsvp, setEditingRsvp] = useState(null);
+  const [viewingMessage, setViewingMessage] = useState(null);
 
   // Supabase re-emits auth events (TOKEN_REFRESHED / SIGNED_IN) whenever the
   // tab regains focus, each with a new session object. Keying the data fetch
@@ -499,7 +500,21 @@ export default function GuestList() {
                               {i.rsvp_bringing_kids ? i.rsvp_kids_count || 0 : ''}
                             </td>
                             <td>{i.is_godparent ? '💜' : ''}</td>
-                            <td className="guests__msg">{i.rsvp_message || '—'}</td>
+                            <td className="guests__msg">
+                              {i.rsvp_message ? (
+                                <button
+                                  type="button"
+                                  className="msg-button"
+                                  onClick={() => setViewingMessage(i)}
+                                  title={`Read ${i.name}'s message`}
+                                  aria-label={`Read ${i.name}'s message`}
+                                >
+                                  💬
+                                </button>
+                              ) : (
+                                <span className="guests__msg-empty">—</span>
+                              )}
+                            </td>
                             <td className="guests__when">{fmtDate(i.submitted_at)}</td>
                             <td className="guests__actions">
                               <RowActions
@@ -549,6 +564,13 @@ export default function GuestList() {
             setEditingRsvp(null);
             refresh();
           }}
+        />
+      )}
+
+      {viewingMessage && (
+        <MessageModal
+          row={viewingMessage}
+          onClose={() => setViewingMessage(null)}
         />
       )}
     </div>
@@ -1373,6 +1395,29 @@ function InvitationManager({ invitations, onChanged, onPatch }) {
 // Admin-side RSVP editor — covers attending/declined, seats, kids,
 // godparent flag, and the message. Saves via updateRsvpAsAdmin which
 // keys on invitation_id.
+// Read-only view of a guest's message. The RSVPs table shows an icon
+// instead of the text — a long blessing stretched the row out of shape and
+// pushed the rest of the columns off-screen.
+function MessageModal({ row, onClose }) {
+  return (
+    <ModalPortal label={`Message from ${row.name}`} onClose={onClose}>
+      <p className="card__eyebrow">A message for Avery</p>
+      <h3 className="modal__title">{row.name}</h3>
+      <p className="modal__sub">
+        {row.rsvp_email || 'No email given'} · {fmtDate(row.submitted_at)}
+      </p>
+
+      <blockquote className="message-modal__quote">{row.rsvp_message}</blockquote>
+
+      <div className="modal__actions">
+        <button type="button" className="btn btn--primary" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </ModalPortal>
+  );
+}
+
 function EditRsvpModal({ row, onClose, onSaved }) {
   const [attending, setAttending] = useState(row.status === 'attending');
   const [seats, setSeats] = useState(row.rsvp_seats ?? row.seats ?? 1);

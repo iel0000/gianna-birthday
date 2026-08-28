@@ -1668,11 +1668,49 @@
   color: var(--purple-900);
 }
 
+/* The message column is just an icon now — the full text lives in a modal,
+   because a long blessing stretched the row and pushed the later columns
+   out of view. */
 .guests__msg {
-  max-width: 280px;
-  font-size: 0.85rem;
-  color: var(--purple-900);
+  width: 60px;
+  text-align: center;
+}
+
+.guests__msg-empty {
+  color: var(--purple-700);
+  opacity: 0.45;
+}
+
+.msg-button {
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(160, 124, 255, 0.28);
+  background: rgba(255, 255, 255, 0.7);
+  transition: all 150ms ease;
+}
+
+.msg-button:hover {
+  border-color: var(--purple-500);
+  background: var(--purple-100);
+  transform: translateY(-1px);
+}
+
+.message-modal__quote {
+  margin: 6px 0 20px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1.5px dashed var(--purple-300);
+  background: linear-gradient(135deg, rgba(255, 179, 217, 0.16), rgba(200, 168, 255, 0.16));
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
   font-style: italic;
+  line-height: 1.6;
+  color: var(--purple-900);
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .guests__when {
